@@ -4,6 +4,7 @@ in vec3 fragColor;
 in vec2 fragTexCoord;
 in vec3 fragNormal;
 in vec3 fragPos;
+in mat3 TBN;
 
 out vec4 outColor;
 
@@ -140,7 +141,8 @@ void main() {
         // Sample normal from normal map and transform to [-1, 1] range
         norm = texture(normalMap, fragTexCoord).rgb;
         norm = normalize(norm * 2.0 - 1.0);
-        // TODO: Transform to world space using TBN matrix
+        // Transform from tangent space to world space using TBN matrix
+        norm = normalize(TBN * norm);
     } else {
         norm = normalize(fragNormal);
     }

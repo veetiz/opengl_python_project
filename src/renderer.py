@@ -238,6 +238,16 @@ class OpenGLRenderer:
             glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, 
                                 ctypes.c_void_p(VertexClass.get_normal_offset()))
             
+            # Tangent attribute (location = 4)
+            glEnableVertexAttribArray(4)
+            glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, stride, 
+                                ctypes.c_void_p(VertexClass.get_tangent_offset()))
+            
+            # Bitangent attribute (location = 5)
+            glEnableVertexAttribArray(5)
+            glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, stride, 
+                                ctypes.c_void_p(VertexClass.get_bitangent_offset()))
+            
             # Create EBO if mesh has indices
             if mesh.has_indices and mesh.index_data is not None:
                 ebo = glGenBuffers(1)

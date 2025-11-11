@@ -5,7 +5,7 @@ Defines mesh data structure for storing vertex and index data.
 
 import numpy as np
 from typing import List, Optional, TYPE_CHECKING
-from .vertex import Vertex, vertices_to_array
+from .vertex import Vertex, vertices_to_array, calculate_tangents
 
 if TYPE_CHECKING:
     from .texture import Texture
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class Mesh:
     """Mesh class to hold vertex and index buffer data."""
     
-    def __init__(self, vertices: List[Vertex], indices: Optional[List[int]] = None, texture: Optional['Texture'] = None):
+    def __init__(self, vertices: List[Vertex], indices: Optional[List[int]] = None, texture: Optional['Texture'] = None, calculate_tangents_flag: bool = True):
         """
         Initialize a mesh.
         
@@ -22,7 +22,12 @@ class Mesh:
             vertices: List of Vertex objects
             indices: Optional list of indices for indexed rendering
             texture: Optional texture to apply to this mesh
+            calculate_tangents_flag: Whether to calculate tangents/bitangents for normal mapping
         """
+        # Calculate tangents if requested and vertices don't already have them
+        if calculate_tangents_flag and vertices and not vertices[0].tangent:
+            vertices = calculate_tangents(vertices, indices)
+        
         self.vertices = vertices
         self.indices = indices if indices is not None else []
         self.texture = texture
