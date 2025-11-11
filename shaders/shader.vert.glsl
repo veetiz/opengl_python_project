@@ -12,16 +12,23 @@ out vec2 fragTexCoord;
 out vec3 fragNormal;
 out vec3 fragPos;
 out mat3 TBN;
+out vec4 fragPosLightSpaceDirectional;
+out vec4 fragPosLightSpaceSpot[4];
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpaceMatrixDirectional;
+uniform mat4 lightSpaceMatrixSpot[4];
+uniform int numSpotLights;
 
 void main() {
-    gl_Position = projection * view * model * vec4(inPosition, 1.0);
+    vec4 worldPos = model * vec4(inPosition, 1.0);
+    
+    gl_Position = projection * view * worldPos;
     fragColor = inColor;
     fragTexCoord = inTexCoord;
-    fragPos = vec3(model * vec4(inPosition, 1.0));
+    fragPos = vec3(worldPos);
     
     // Transform TBN vectors to world space
     mat3 normalMatrix = mat3(transpose(inverse(model)));
@@ -34,4 +41,11 @@ void main() {
     
     // Also pass the normal for non-normal-mapped rendering
     fragNormal = N;
+    
+    // Calculate light space positions for shadow mapping
+    fragPosLightSpaceDirectional = lightSpaceMatrixDirectional * worldPos;
+    
+    for (int i = 0; i < numSpotLights && i < 4; i++) {
+        fragPosLightSpaceSpot[i] = lightSpaceMatrixSpot[i] * worldPos;
+    }
 }

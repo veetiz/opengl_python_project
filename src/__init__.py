@@ -24,6 +24,7 @@ from .text_renderer import TextRenderer
 from .text2d import Text2D
 from .light import Light, DirectionalLight, PointLight, SpotLight
 from .material import Material
+from .shadow_map import ShadowMap
 
 __all__ = [
     'Window',
@@ -54,5 +55,6 @@ __all__ = [
     'PointLight',
     'SpotLight',
     'Material',
+    'ShadowMap',
 ]
 __version__ = '2.0.0'

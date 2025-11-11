@@ -18,7 +18,8 @@ class Light(Entity):
         name: str = "Light",
         color: Tuple[float, float, float] = (1.0, 1.0, 1.0),
         intensity: float = 1.0,
-        active: bool = True
+        active: bool = True,
+        cast_shadows: bool = False
     ):
         """
         Initialize a light.
@@ -28,11 +29,14 @@ class Light(Entity):
             color: RGB color of the light (0.0-1.0)
             intensity: Light intensity/brightness
             active: Whether the light is active
+            cast_shadows: Whether this light casts shadows
         """
         super().__init__(name=name)
         self.color = color
         self.intensity = intensity
         self.active = active
+        self.cast_shadows = cast_shadows
+        self.shadow_map = None  # Will be set by renderer
     
     def set_color(self, color: Tuple[float, float, float]):
         """Set light color."""
@@ -68,7 +72,8 @@ class DirectionalLight(Light):
         direction: Tuple[float, float, float] = (0.0, -1.0, 0.0),
         color: Tuple[float, float, float] = (1.0, 1.0, 1.0),
         intensity: float = 1.0,
-        active: bool = True
+        active: bool = True,
+        cast_shadows: bool = False
     ):
         """
         Initialize a directional light.
@@ -79,8 +84,9 @@ class DirectionalLight(Light):
             color: RGB color (0.0-1.0)
             intensity: Light intensity
             active: Whether light is active
+            cast_shadows: Whether this light casts shadows
         """
-        super().__init__(name, color, intensity, active)
+        super().__init__(name, color, intensity, active, cast_shadows)
         self.direction = np.array(direction, dtype=np.float32)
         # Normalize direction
         length = np.linalg.norm(self.direction)
@@ -116,7 +122,9 @@ class PointLight(Light):
         constant: float = 1.0,
         linear: float = 0.09,
         quadratic: float = 0.032,
-        active: bool = True
+        active: bool = True,
+        cast_shadows: bool = False,
+        shadow_far_plane: float = 25.0
     ):
         """
         Initialize a point light.
@@ -130,8 +138,11 @@ class PointLight(Light):
             linear: Linear attenuation factor
             quadratic: Quadratic attenuation factor
             active: Whether light is active
+            cast_shadows: Whether this light casts shadows
+            shadow_far_plane: Far plane for shadow cubemap
         """
-        super().__init__(name, color, intensity, active)
+        super().__init__(name, color, intensity, active, cast_shadows)
+        self.shadow_far_plane = shadow_far_plane
         self.position = np.array(position, dtype=np.float32)
         self.constant = constant
         self.linear = linear
@@ -175,7 +186,8 @@ class SpotLight(Light):
         constant: float = 1.0,
         linear: float = 0.09,
         quadratic: float = 0.032,
-        active: bool = True
+        active: bool = True,
+        cast_shadows: bool = False
     ):
         """
         Initialize a spot light.
@@ -192,8 +204,9 @@ class SpotLight(Light):
             linear: Linear attenuation factor
             quadratic: Quadratic attenuation factor
             active: Whether light is active
+            cast_shadows: Whether this light casts shadows
         """
-        super().__init__(name, color, intensity, active)
+        super().__init__(name, color, intensity, active, cast_shadows)
         self.position = np.array(position, dtype=np.float32)
         self.direction = np.array(direction, dtype=np.float32)
         

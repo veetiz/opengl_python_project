@@ -70,10 +70,11 @@ def create_main_scene():
         name="Sun",
         direction=(0.3, -0.8, -0.5),  # Coming from top-right
         color=(1.0, 0.95, 0.9),  # Slightly warm white
-        intensity=0.4  # Lower intensity for subtle lighting
+        intensity=0.4,  # Lower intensity for subtle lighting
+        cast_shadows=True  # Enable shadows!
     )
     scene.add_light(sun_light)
-    print(f"[OK] Directional light 'Sun' added")
+    print(f"[OK] Directional light 'Sun' added with shadows")
     
     # Add a point light for additional illumination
     point_light = PointLight(
@@ -99,10 +100,11 @@ def create_main_scene():
         outer_cutoff=17.5,  # degrees
         constant=1.0,
         linear=0.09,
-        quadratic=0.032
+        quadratic=0.032,
+        cast_shadows=True  # Enable shadows!
     )
     scene.add_light(spot_light)
-    print(f"[OK] Spot light 'Flashlight' added")
+    print(f"[OK] Spot light 'Flashlight' added with shadows")
     
     # === CREATE GAME OBJECTS ===
     

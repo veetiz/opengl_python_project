@@ -7,11 +7,12 @@ from OpenGL.GL import *  # type: ignore
 from OpenGL.GL.shaders import compileProgram, compileShader  # type: ignore
 import numpy as np
 import ctypes
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from .window import Window
 from .camera import Camera
 from .scene import Scene
 from .mesh import Mesh
+from .shadow_map import ShadowMap
 import os
 
 
@@ -31,6 +32,8 @@ class OpenGLRenderer:
         
         # OpenGL resources
         self.shader_program: Optional[int] = None
+        self.shadow_shader: Optional[int] = None
+        self.shadow_shader_point: Optional[int] = None
         self.vao: Optional[int] = None
         
         # Uniform locations
@@ -46,6 +49,9 @@ class OpenGLRenderer:
         
         # Mesh VBO tracking (for cleanup)
         self._mesh_vbos: Dict[int, int] = {}  # Maps mesh id to VBO
+        
+        # Shadow maps
+        self.shadow_maps: Dict[str, ShadowMap] = {}  # Maps light name to shadow map
         
     def init(self, window: Window) -> bool:
         """
@@ -86,6 +92,11 @@ class OpenGLRenderer:
                 print("ERROR: Shader program creation failed")
                 return False
             
+            # Load and compile shadow shaders
+            if not self._create_shadow_shaders():
+                print("WARNING: Shadow shaders failed to compile - shadows will be disabled")
+                # Continue anyway, shadows are optional
+            
             # Get uniform locations
             self.model_loc = glGetUniformLocation(self.shader_program, "model")
             self.view_loc = glGetUniformLocation(self.shader_program, "view")
@@ -118,6 +129,40 @@ class OpenGLRenderer:
             # Normal mapping uniforms
             self.normal_map_loc = glGetUniformLocation(self.shader_program, "normalMap")
             self.use_normal_map_loc = glGetUniformLocation(self.shader_program, "useNormalMap")
+            
+            # Explicitly bind samplers to texture units
+            glUseProgram(self.shader_program)
+            
+            # Main texture samplers
+            texture_sampler_loc = glGetUniformLocation(self.shader_program, "textureSampler")
+            if texture_sampler_loc != -1:
+                glUniform1i(texture_sampler_loc, 0)  # Unit 0
+            
+            normal_map_sampler_loc = glGetUniformLocation(self.shader_program, "normalMap")
+            if normal_map_sampler_loc != -1:
+                glUniform1i(normal_map_sampler_loc, 1)  # Unit 1
+            
+            # Shadow map samplers
+            shadow_dir_loc = glGetUniformLocation(self.shader_program, "shadowMapDirectional")
+            if shadow_dir_loc != -1:
+                glUniform1i(shadow_dir_loc, 2)  # Unit 2
+            
+            # Spot shadow maps
+            for i in range(4):
+                spot_loc = glGetUniformLocation(self.shader_program, f"shadowMapSpot{i}")
+                if spot_loc != -1:
+                    glUniform1i(spot_loc, 3 + i)  # Units 3-6
+            
+            # Point shadow cubemaps
+            for i in range(4):
+                point_loc = glGetUniformLocation(self.shader_program, f"shadowMapPoint{i}")
+                if point_loc != -1:
+                    glUniform1i(point_loc, 7 + i)  # Units 7-10
+            
+            # Initialize numSpotLights to 0 (will be set properly during render)
+            glUniform1i(self.num_spot_lights_loc, 0)
+            
+            glUseProgram(0)
             
             # Create VAO
             self.vao = glGenVertexArrays(1)
@@ -168,9 +213,24 @@ class OpenGLRenderer:
                 print(f"ERROR: Fragment shader compilation failed: {e}")
                 raise
             
-            self.shader_program = compileProgram(vert_shader, frag_shader)
+            # Create program manually to avoid premature validation
+            self.shader_program = glCreateProgram()
+            glAttachShader(self.shader_program, vert_shader)
+            glAttachShader(self.shader_program, frag_shader)
+            glLinkProgram(self.shader_program)
             
-            print("[OK] Shaders compiled successfully")
+            # Check link status
+            link_status = glGetProgramiv(self.shader_program, GL_LINK_STATUS)
+            if not link_status:
+                info_log = glGetProgramInfoLog(self.shader_program)
+                print(f"ERROR: Shader program linking failed: {info_log.decode()}")
+                return False
+            
+            # Clean up shaders (no longer needed after linking)
+            glDeleteShader(vert_shader)
+            glDeleteShader(frag_shader)
+            
+            print("[OK] Shaders compiled and linked successfully")
             return True
             
         except Exception as e:
@@ -178,6 +238,64 @@ class OpenGLRenderer:
             import traceback
             traceback.print_exc()
             return False
+    
+    def _create_shadow_shaders(self) -> bool:
+        """Compile shadow depth shaders."""
+        try:
+            # Directional/Spot light shadow shader
+            vert_path = "shaders/shadow_depth.vert.glsl"
+            frag_path = "shaders/shadow_depth.frag.glsl"
+            
+            if os.path.exists(vert_path) and os.path.exists(frag_path):
+                with open(vert_path, 'r') as f:
+                    vert_source = f.read()
+                with open(frag_path, 'r') as f:
+                    frag_source = f.read()
+                
+                vert_shader = compileShader(vert_source, GL_VERTEX_SHADER)
+                frag_shader = compileShader(frag_source, GL_FRAGMENT_SHADER)
+                
+                self.shadow_shader = glCreateProgram()
+                glAttachShader(self.shadow_shader, vert_shader)
+                glAttachShader(self.shadow_shader, frag_shader)
+                glLinkProgram(self.shadow_shader)
+                
+                if not glGetProgramiv(self.shadow_shader, GL_LINK_STATUS):
+                    print(f"ERROR: Shadow shader linking failed")
+                    return False
+                
+                glDeleteShader(vert_shader)
+                glDeleteShader(frag_shader)
+                print("[OK] Shadow depth shader compiled")
+            
+            # Point light shadow shader (requires geometry shader - skip for now)
+            # We'll implement this later if needed
+            
+            return True
+            
+        except Exception as e:
+            print(f"WARNING: Failed to compile shadow shaders: {e}")
+            return False
+    
+    def _create_shadow_maps(self):
+        """Create shadow maps for lights that cast shadows."""
+        if not self.scene:
+            return
+        
+        for light in self.scene.get_active_lights():
+            if light.cast_shadows and light.name not in self.shadow_maps:
+                light_data = light.get_light_data()
+                
+                if light_data['type'] == 'point':
+                    # Cubemap shadow map for point lights
+                    shadow_map = ShadowMap(1024, 1024, is_cubemap=True)
+                else:
+                    # 2D shadow map for directional/spot lights
+                    shadow_map = ShadowMap(2048, 2048, is_cubemap=False)
+                
+                self.shadow_maps[light.name] = shadow_map
+                light.shadow_map = shadow_map
+                print(f"[OK] Shadow map created for light '{light.name}'")
     
     def set_scene(self, scene: Scene):
         """
@@ -195,6 +313,9 @@ class OpenGLRenderer:
                     mesh_id = id(mesh)
                     if mesh_id not in self._mesh_vbos:
                         self._create_vertex_buffer(mesh)
+        
+        # Create shadow maps for lights that cast shadows
+        self._create_shadow_maps()
     
     def _create_vertex_buffer(self, mesh: Mesh) -> bool:
         """Create OpenGL vertex buffer for a mesh."""
@@ -381,13 +502,216 @@ class OpenGLRenderer:
             glUniform1f(linear_loc, data['linear'])
             glUniform1f(quadratic_loc, data['quadratic'])
     
+    def _setup_shadow_mapping(self):
+        """Set up shadow mapping uniforms and bind shadow textures."""
+        if not self.scene:
+            return
+        
+        # Get lights
+        active_lights = self.scene.get_active_lights()
+        directional_light = None
+        spot_lights = []
+        
+        for light in active_lights:
+            light_data = light.get_light_data()
+            if light_data['type'] == 'directional' and not directional_light:
+                directional_light = light
+            elif light_data['type'] == 'spot' and len(spot_lights) < 4:
+                spot_lights.append(light)
+        
+        # Set up directional light shadows
+        if directional_light and directional_light.cast_shadows and directional_light.name in self.shadow_maps:
+            shadow_map = self.shadow_maps[directional_light.name]
+            shadow_map.bind_texture(2)  # Texture unit 2
+            
+            light_space_matrix = self._calculate_light_space_matrix(directional_light)
+            lsm_loc = glGetUniformLocation(self.shader_program, "lightSpaceMatrixDirectional")
+            glUniformMatrix4fv(lsm_loc, 1, GL_FALSE, light_space_matrix)
+            
+            use_shadows_loc = glGetUniformLocation(self.shader_program, "useShadowsDirectional")
+            glUniform1i(use_shadows_loc, 1)
+        else:
+            use_shadows_loc = glGetUniformLocation(self.shader_program, "useShadowsDirectional")
+            glUniform1i(use_shadows_loc, 0)
+        
+        # Set up spotlight shadows
+        for i in range(4):
+            if i < len(spot_lights) and spot_lights[i].cast_shadows and spot_lights[i].name in self.shadow_maps:
+                shadow_map = self.shadow_maps[spot_lights[i].name]
+                shadow_map.bind_texture(3 + i)  # Texture units 3-6
+                
+                light_space_matrix = self._calculate_light_space_matrix(spot_lights[i])
+                lsm_loc = glGetUniformLocation(self.shader_program, f"lightSpaceMatrixSpot[{i}]")
+                glUniformMatrix4fv(lsm_loc, 1, GL_FALSE, light_space_matrix)
+                
+                use_shadows_loc = glGetUniformLocation(self.shader_program, f"useShadowsSpot[{i}]")
+                glUniform1i(use_shadows_loc, 1)
+            else:
+                use_shadows_loc = glGetUniformLocation(self.shader_program, f"useShadowsSpot[{i}]")
+                glUniform1i(use_shadows_loc, 0)
+        
+        # Disable point light shadows for now
+        for i in range(4):
+            use_shadows_loc = glGetUniformLocation(self.shader_program, f"useShadowsPoint[{i}]")
+            glUniform1i(use_shadows_loc, 0)
+    
+    def _calculate_light_space_matrix(self, light):
+        """Calculate light-space matrix for shadow mapping."""
+        light_data = light.get_light_data()
+        light_type = light_data['type']
+        
+        if light_type == 'directional':
+            # Orthographic projection for directional lights
+            light_dir = np.array(light_data['direction'], dtype=np.float32)
+            
+            # Create view matrix looking from light direction
+            light_pos = np.array([0.0, 0.0, 0.0], dtype=np.float32) - light_dir * 10.0
+            target = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+            up = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+            
+            # Simple lookAt
+            z_axis = light_dir / np.linalg.norm(light_dir)
+            x_axis = np.cross(up, z_axis)
+            x_axis = x_axis / np.linalg.norm(x_axis)
+            y_axis = np.cross(z_axis, x_axis)
+            
+            view = np.identity(4, dtype=np.float32)
+            view[0, :3] = x_axis
+            view[1, :3] = y_axis
+            view[2, :3] = z_axis
+            view[:3, 3] = -np.dot(np.array([x_axis, y_axis, z_axis]), light_pos)
+            
+            # Orthographic projection
+            near = 1.0
+            far = 20.0
+            size = 10.0
+            proj = np.array([
+                [1.0/size, 0, 0, 0],
+                [0, 1.0/size, 0, 0],
+                [0, 0, -2.0/(far-near), -(far+near)/(far-near)],
+                [0, 0, 0, 1]
+            ], dtype=np.float32)
+            
+            return np.dot(proj, view)
+            
+        elif light_type == 'spot':
+            # Perspective projection for spot lights
+            light_pos = np.array(light_data['position'], dtype=np.float32)
+            light_dir = np.array(light_data['direction'], dtype=np.float32)
+            
+            # Create view matrix
+            target = light_pos + light_dir
+            up = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+            
+            z_axis = light_dir / np.linalg.norm(light_dir)
+            x_axis = np.cross(up, z_axis)
+            if np.linalg.norm(x_axis) > 0:
+                x_axis = x_axis / np.linalg.norm(x_axis)
+            y_axis = np.cross(z_axis, x_axis)
+            
+            view = np.identity(4, dtype=np.float32)
+            view[0, :3] = x_axis
+            view[1, :3] = y_axis
+            view[2, :3] = z_axis
+            view[:3, 3] = -np.dot(np.array([x_axis, y_axis, z_axis]), light_pos)
+            
+            # Perspective projection
+            fov = np.radians(45.0)  # 45 degree FOV
+            aspect = 1.0
+            near = 0.1
+            far = 25.0
+            
+            f = 1.0 / np.tan(fov / 2.0)
+            proj = np.array([
+                [f/aspect, 0, 0, 0],
+                [0, f, 0, 0],
+                [0, 0, (far+near)/(near-far), (2*far*near)/(near-far)],
+                [0, 0, -1, 0]
+            ], dtype=np.float32)
+            
+            return np.dot(proj, view)
+        
+        return np.identity(4, dtype=np.float32)
+    
+    def _render_shadow_pass(self):
+        """Render shadow maps for all lights that cast shadows."""
+        if not self.shadow_shader or not self.scene:
+            return
+        
+        # Save current viewport
+        viewport = glGetIntegerv(GL_VIEWPORT)
+        
+        # Render shadows for each light
+        for light in self.scene.get_active_lights():
+            if not light.cast_shadows or light.name not in self.shadow_maps:
+                continue
+            
+            shadow_map = self.shadow_maps[light.name]
+            light_data = light.get_light_data()
+            
+            # Skip point lights for now (requires geometry shader)
+            if light_data['type'] == 'point':
+                continue
+            
+            # Bind shadow map framebuffer
+            shadow_map.bind()
+            
+            # Use shadow shader
+            glUseProgram(self.shadow_shader)
+            
+            # Calculate light space matrix
+            light_space_matrix = self._calculate_light_space_matrix(light)
+            
+            # Set uniform
+            light_space_loc = glGetUniformLocation(self.shadow_shader, "lightSpaceMatrix")
+            glUniformMatrix4fv(light_space_loc, 1, GL_FALSE, light_space_matrix)
+            
+            # Render all objects
+            for game_object in self.scene.game_objects:
+                if not game_object.model or not game_object.active:
+                    continue
+                
+                # Set model matrix
+                model = game_object.transform.get_model_matrix()
+                model_loc = glGetUniformLocation(self.shadow_shader, "model")
+                glUniformMatrix4fv(model_loc, 1, GL_FALSE, model)
+                
+                # Render each mesh
+                for mesh in game_object.model.meshes:
+                    if mesh.vbo:
+                        glBindVertexArray(self.vao)
+                        glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo)
+                        
+                        # Only need position for shadow pass
+                        glEnableVertexAttribArray(0)
+                        from .vertex import Vertex as VertexClass
+                        stride = VertexClass.get_stride()
+                        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, 
+                                            ctypes.c_void_p(VertexClass.get_position_offset()))
+                        
+                        # Draw
+                        if mesh.has_indices and mesh.ebo:
+                            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ebo)
+                            glDrawElements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, None)
+                        else:
+                            glDrawArrays(GL_TRIANGLES, 0, mesh.vertex_count)
+            
+            # Unbind shadow map
+            shadow_map.unbind()
+        
+        # Restore viewport
+        glViewport(viewport[0], viewport[1], viewport[2], viewport[3])
+    
     def render_frame(self):
         """Render a single frame."""
         if not self.scene:
             return
         
         try:
-            # Clear the screen
+            # Render shadow maps first
+            self._render_shadow_pass()
+            
+            # Clear the screen for main render
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             
             # Use shader program
@@ -407,6 +731,9 @@ class OpenGLRenderer:
             
             # Set up lighting
             self._setup_lighting()
+            
+            # Set up shadow mapping
+            self._setup_shadow_mapping()
             
             # Bind VAO
             glBindVertexArray(self.vao)
@@ -482,6 +809,11 @@ class OpenGLRenderer:
         """Clean up OpenGL resources."""
         print("\nCleaning up OpenGL resources...")
         
+        # Clean up shadow maps
+        for shadow_map in self.shadow_maps.values():
+            shadow_map.cleanup()
+        self.shadow_maps.clear()
+        
         # Clean up all mesh VBOs
         for vbo in self._mesh_vbos.values():
             glDeleteBuffers(1, [vbo])
@@ -492,9 +824,17 @@ class OpenGLRenderer:
             glDeleteVertexArrays(1, [self.vao])
             self.vao = None
         
-        # Clean up shader program
+        # Clean up shader programs
         if self.shader_program:
             glDeleteProgram(self.shader_program)
             self.shader_program = None
+        
+        if self.shadow_shader:
+            glDeleteProgram(self.shadow_shader)
+            self.shadow_shader = None
+        
+        if self.shadow_shader_point:
+            glDeleteProgram(self.shadow_shader_point)
+            self.shadow_shader_point = None
         
         print("[OK] OpenGL renderer cleaned up")
