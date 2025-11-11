@@ -176,19 +176,17 @@ def create_main_scene():
     print(f"[OK] 3D text '{label_3d.label}' added at position {label_3d.position}")
     
     # Create another 3D text label (world-oriented)
-    # Note: Text is rendered on XY plane (Z=0), naturally facing +Z direction
-    # Camera is on +Z side looking towards -Z, so we rotate 180° on Y to flip it
-    # Negative X scale fixes the horizontal mirroring caused by Y rotation
+    # World-oriented: stays fixed in space, same base orientation as wood quad
     world_text = Text3D(
         label="WorldText",
         text="WORLD",
         font=None,  # Will be set by text_ui_script
         position=(0.0, -1.8, 0.0),  # Below the quad
-        rotation=(0.0, 180.0, 0.0),  # Y=180 to face camera
-        size=0.1,  # Larger size for visibility
-        scale=(-1.0, 1.0, 1.0),  # Negative X to flip horizontally (fixes mirroring)
+        rotation=(0.0, 0.0, 0.0),  # Same base rotation as wood quad
+        size=0.12,  # Slightly larger
+        scale=(1.0, 1.0, 1.0),  # Same scale as base (no flips)
         color=(0.2, 1.0, 0.2),  # Bright green
-        billboard=False,  # World-oriented (stays in place when camera moves)
+        billboard=False,  # World-oriented - stays fixed in space
         visible=True
     )
     scene.add_text3d(world_text)
