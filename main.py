@@ -5,7 +5,10 @@ Entry point for the OpenGL application.
 
 import sys
 import time
-from src import Application, Scene, SplashScene, GameObject, Model, Camera, GameScript, ModelLoader, Texture, FontLoader
+from src import (
+    Application, Scene, SplashScene, GameObject, Model, Camera, GameScript, 
+    ModelLoader, Texture, FontLoader, DirectionalLight, PointLight, Material
+)
 from game.scripts import RotateScript, FPSCounterScript, CameraMovementScript, TextUIScript, SplashTransitionScript
 
 
@@ -58,6 +61,33 @@ def create_main_scene():
     scene.set_active_camera(0)
     print(f"[OK] Active camera: {scene.active_camera_index}")
     
+    # === CREATE LIGHTS ===
+    
+    print("\nAdding lights to scene...")
+    
+    # Add a directional light (like the sun)
+    sun_light = DirectionalLight(
+        name="Sun",
+        direction=(0.3, -0.8, -0.5),  # Coming from top-right
+        color=(1.0, 0.95, 0.9),  # Slightly warm white
+        intensity=0.4  # Lower intensity for subtle lighting
+    )
+    scene.add_light(sun_light)
+    print(f"[OK] Directional light 'Sun' added")
+    
+    # Add a point light for additional illumination
+    point_light = PointLight(
+        name="LightBulb",
+        position=(2.0, 2.0, 2.0),
+        color=(1.0, 1.0, 1.0),
+        intensity=0.3,  # Lower intensity
+        constant=1.0,
+        linear=0.14,    # Increased falloff
+        quadratic=0.07  # Increased falloff
+    )
+    scene.add_light(point_light)
+    print(f"[OK] Point light 'LightBulb' added")
+    
     # === CREATE GAME OBJECTS ===
     
     # NOTE: Don't load textures yet - OpenGL context doesn't exist until app.run()
@@ -70,9 +100,19 @@ def create_main_scene():
     # Create a simple textured quad (simpler than cube for testing)
     wood_model = Model.create_textured_quad("WoodQuad", texture=None)
     
+    # Create a material for the wooden quad
+    wood_material = Material(
+        name="Wood",
+        ambient=(0.4, 0.35, 0.3),  # Higher ambient to keep scene visible
+        diffuse=(0.8, 0.7, 0.6),   # Wood-like diffuse
+        specular=(0.3, 0.3, 0.3),  # Low specular (wood is not very shiny)
+        shininess=16.0
+    )
+    
     wood_obj = GameObject(
         name="WoodQuad",
         model=wood_model,
+        material=wood_material,
         position=(0.0, 0.0, 0.0),
         rotation=(0.0, 0.0, 0.0),
         scale=(2.0, 2.0, 2.0)  # Make it bigger

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .camera import Camera
     from .entity import Entity
     from .gamescript import GameScript
+    from .light import Light
 
 
 class Scene:
@@ -25,6 +26,7 @@ class Scene:
         self.name = name
         self.game_objects: List['GameObject'] = []
         self.cameras: List['Camera'] = []
+        self.lights: List['Light'] = []
         self.active_camera_index: int = 0
         self._entities: List['Entity'] = []  # All entities (unified list)
         self.scripts: List['GameScript'] = []  # Global scripts attached to the scene
@@ -143,6 +145,44 @@ class Scene:
     def camera_count(self) -> int:
         """Get the total number of cameras in the scene."""
         return len(self.cameras)
+    
+    # === Light Management ===
+    
+    def add_light(self, light: 'Light'):
+        """
+        Add a light to the scene.
+        
+        Args:
+            light: Light to add
+        """
+        self.lights.append(light)
+        self._entities.append(light)
+    
+    def remove_light(self, light: 'Light'):
+        """
+        Remove a light from the scene.
+        
+        Args:
+            light: Light to remove
+        """
+        if light in self.lights:
+            self.lights.remove(light)
+            if light in self._entities:
+                self._entities.remove(light)
+    
+    def get_active_lights(self) -> List['Light']:
+        """
+        Get all active lights in the scene.
+        
+        Returns:
+            List of active lights
+        """
+        return [light for light in self.lights if light.active]
+    
+    @property
+    def light_count(self) -> int:
+        """Get the total number of lights in the scene."""
+        return len(self.lights)
     
     # === Entity Management (Generic) ===
     

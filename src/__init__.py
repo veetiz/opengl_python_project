@@ -22,6 +22,8 @@ from .font import Font, Glyph
 from .font_loader import FontLoader
 from .text_renderer import TextRenderer
 from .text2d import Text2D
+from .light import Light, DirectionalLight, PointLight, SpotLight
+from .material import Material
 
 __all__ = [
     'Window',
@@ -47,5 +49,10 @@ __all__ = [
     'FontLoader',
     'TextRenderer',
     'Text2D',
+    'Light',
+    'DirectionalLight',
+    'PointLight',
+    'SpotLight',
+    'Material',
 ]
 __version__ = '2.0.0'

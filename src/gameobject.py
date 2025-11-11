@@ -4,9 +4,12 @@ Represents a game object with transform and model.
 """
 
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 from .entity import Entity
 from .model import Model
+
+if TYPE_CHECKING:
+    from .material import Material
 
 
 class Transform:
@@ -87,6 +90,7 @@ class GameObject(Entity):
         self,
         name: str = "GameObject",
         model: Optional[Model] = None,
+        material: Optional['Material'] = None,
         position: Tuple[float, float, float] = (0.0, 0.0, 0.0),
         rotation: Tuple[float, float, float] = (0.0, 0.0, 0.0),
         scale: Tuple[float, float, float] = (1.0, 1.0, 1.0)
@@ -97,6 +101,7 @@ class GameObject(Entity):
         Args:
             name: Object name for identification
             model: 3D model to render
+            material: Material defining surface properties for lighting
             position: Initial position (x, y, z)
             rotation: Initial rotation in degrees (pitch, yaw, roll)
             scale: Initial scale (x, y, z)
@@ -105,6 +110,7 @@ class GameObject(Entity):
         super().__init__(name)
         
         self.model = model
+        self.material = material
         self.transform = Transform(position, rotation, scale)
     
     def set_position(self, x: float, y: float, z: float):
