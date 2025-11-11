@@ -115,6 +115,8 @@ def create_main_scene():
     # Store texture paths for later loading
     texture_path = "assets/textures/Substance_graph_basecolor.png"
     normal_map_path = "assets/textures/Substance_graph_normal.png"
+    roughness_map_path = "assets/textures/Substance_graph_roughness.png"
+    ao_map_path = "assets/textures/Substance_graph_ambientocclusion.png"
     
     # Create a simple textured quad (simpler than cube for testing)
     wood_model = Model.create_textured_quad("WoodQuad", texture=None)
@@ -126,7 +128,9 @@ def create_main_scene():
         diffuse=(0.8, 0.7, 0.6),   # Wood-like diffuse
         specular=(0.3, 0.3, 0.3),  # Low specular (wood is not very shiny)
         shininess=16.0,
-        normal_map=None  # Will be loaded after OpenGL init
+        normal_map=None,  # Will be loaded after OpenGL init
+        roughness_map=None,  # Will be loaded after OpenGL init
+        ao_map=None  # Will be loaded after OpenGL init
     )
     
     wood_obj = GameObject(
@@ -142,6 +146,8 @@ def create_main_scene():
     # Store texture paths as custom properties so we can load them after OpenGL init
     wood_obj._texture_path = texture_path
     wood_obj._normal_map_path = normal_map_path
+    wood_obj._roughness_map_path = roughness_map_path
+    wood_obj._ao_map_path = ao_map_path
     
     # Attach a rotation script to see it from all angles
     rotate_script = RotateScript(rotation_speed=(0, 30, 0))  # Rotate around Y axis only

@@ -21,7 +21,9 @@ class Material:
         specular: Tuple[float, float, float] = (1.0, 1.0, 1.0),
         shininess: float = 32.0,
         texture: Optional[Texture] = None,
-        normal_map: Optional[Texture] = None
+        normal_map: Optional[Texture] = None,
+        roughness_map: Optional[Texture] = None,
+        ao_map: Optional[Texture] = None
     ):
         """
         Initialize a material.
@@ -34,6 +36,8 @@ class Material:
             shininess: Shininess factor (higher = smaller, sharper highlights)
             texture: Optional diffuse/albedo texture
             normal_map: Optional normal map texture for surface detail
+            roughness_map: Optional roughness map (controls surface roughness/shininess)
+            ao_map: Optional ambient occlusion map (adds depth to crevices)
         """
         self.name = name
         self.ambient = ambient
@@ -42,6 +46,8 @@ class Material:
         self.shininess = shininess
         self.texture = texture
         self.normal_map = normal_map
+        self.roughness_map = roughness_map
+        self.ao_map = ao_map
     
     def set_ambient(self, ambient: Tuple[float, float, float]):
         """Set ambient color."""
@@ -66,6 +72,14 @@ class Material:
     def set_normal_map(self, normal_map: Optional[Texture]):
         """Set or update the normal map texture."""
         self.normal_map = normal_map
+    
+    def set_roughness_map(self, roughness_map: Optional[Texture]):
+        """Set or update the roughness map texture."""
+        self.roughness_map = roughness_map
+    
+    def set_ao_map(self, ao_map: Optional[Texture]):
+        """Set or update the ambient occlusion map texture."""
+        self.ao_map = ao_map
     
     @staticmethod
     def create_default() -> 'Material':

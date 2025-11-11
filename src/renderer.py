@@ -130,6 +130,12 @@ class OpenGLRenderer:
             self.normal_map_loc = glGetUniformLocation(self.shader_program, "normalMap")
             self.use_normal_map_loc = glGetUniformLocation(self.shader_program, "useNormalMap")
             
+            # PBR texture uniforms
+            self.roughness_map_loc = glGetUniformLocation(self.shader_program, "roughnessMap")
+            self.use_roughness_map_loc = glGetUniformLocation(self.shader_program, "useRoughnessMap")
+            self.ao_map_loc = glGetUniformLocation(self.shader_program, "aoMap")
+            self.use_ao_map_loc = glGetUniformLocation(self.shader_program, "useAOMap")
+            
             # Explicitly bind samplers to texture units
             glUseProgram(self.shader_program)
             
@@ -158,6 +164,15 @@ class OpenGLRenderer:
                 point_loc = glGetUniformLocation(self.shader_program, f"shadowMapPoint{i}")
                 if point_loc != -1:
                     glUniform1i(point_loc, 7 + i)  # Units 7-10
+            
+            # PBR texture maps
+            roughness_map_loc = glGetUniformLocation(self.shader_program, "roughnessMap")
+            if roughness_map_loc != -1:
+                glUniform1i(roughness_map_loc, 11)  # Unit 11
+            
+            ao_map_loc = glGetUniformLocation(self.shader_program, "aoMap")
+            if ao_map_loc != -1:
+                glUniform1i(ao_map_loc, 12)  # Unit 12
             
             # Initialize numSpotLights to 0 (will be set properly during render)
             glUniform1i(self.num_spot_lights_loc, 0)
@@ -410,6 +425,24 @@ class OpenGLRenderer:
                 glUniform1i(self.use_normal_map_loc, 1)  # Enable normal mapping
             else:
                 glUniform1i(self.use_normal_map_loc, 0)  # Disable normal mapping
+            
+            # Bind roughness map if available
+            if mat.roughness_map and mat.roughness_map.texture_id:
+                glActiveTexture(GL_TEXTURE11)  # Use texture unit 11 for roughness
+                mat.roughness_map.bind(11)
+                glUniform1i(self.roughness_map_loc, 11)
+                glUniform1i(self.use_roughness_map_loc, 1)  # Enable roughness mapping
+            else:
+                glUniform1i(self.use_roughness_map_loc, 0)  # Disable roughness mapping
+            
+            # Bind AO map if available
+            if mat.ao_map and mat.ao_map.texture_id:
+                glActiveTexture(GL_TEXTURE12)  # Use texture unit 12 for AO
+                mat.ao_map.bind(12)
+                glUniform1i(self.ao_map_loc, 12)
+                glUniform1i(self.use_ao_map_loc, 1)  # Enable AO mapping
+            else:
+                glUniform1i(self.use_ao_map_loc, 0)  # Disable AO mapping
         else:
             # Default material
             glUniform3fv(self.material_ambient_loc, 1, [0.2, 0.2, 0.2])
@@ -417,6 +450,8 @@ class OpenGLRenderer:
             glUniform3fv(self.material_specular_loc, 1, [1.0, 1.0, 1.0])
             glUniform1f(self.material_shininess_loc, 32.0)
             glUniform1i(self.use_normal_map_loc, 0)  # Disable normal mapping
+            glUniform1i(self.use_roughness_map_loc, 0)  # Disable roughness mapping
+            glUniform1i(self.use_ao_map_loc, 0)  # Disable AO mapping
     
     def _setup_lighting(self):
         """Set up lighting uniforms for the current scene."""

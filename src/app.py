@@ -144,6 +144,46 @@ class Application:
                     
                 except Exception as e:
                     print(f"[TEXTURE LOADING] [ERROR] Failed to load normal map: {e}")
+            
+            # Load roughness map
+            if hasattr(game_object, '_roughness_map_path') and game_object._roughness_map_path:
+                roughness_map_path = game_object._roughness_map_path
+                print(f"[TEXTURE LOADING] Loading roughness map for '{game_object.name}': {roughness_map_path}")
+                
+                try:
+                    roughness_map = Texture(roughness_map_path)
+                    print(f"[TEXTURE LOADING] [OK] Loaded roughness map: ID={roughness_map.texture_id}")
+                    
+                    # Apply roughness map to material
+                    if game_object.material:
+                        game_object.material.set_roughness_map(roughness_map)
+                        print(f"[TEXTURE LOADING] Applied roughness map to material")
+                    
+                    # Clear the deferred roughness map path
+                    del game_object._roughness_map_path
+                    
+                except Exception as e:
+                    print(f"[TEXTURE LOADING] [ERROR] Failed to load roughness map: {e}")
+            
+            # Load AO map
+            if hasattr(game_object, '_ao_map_path') and game_object._ao_map_path:
+                ao_map_path = game_object._ao_map_path
+                print(f"[TEXTURE LOADING] Loading AO map for '{game_object.name}': {ao_map_path}")
+                
+                try:
+                    ao_map = Texture(ao_map_path)
+                    print(f"[TEXTURE LOADING] [OK] Loaded AO map: ID={ao_map.texture_id}")
+                    
+                    # Apply AO map to material
+                    if game_object.material:
+                        game_object.material.set_ao_map(ao_map)
+                        print(f"[TEXTURE LOADING] Applied AO map to material")
+                    
+                    # Clear the deferred AO map path
+                    del game_object._ao_map_path
+                    
+                except Exception as e:
+                    print(f"[TEXTURE LOADING] [ERROR] Failed to load AO map: {e}")
         
         print("[TEXTURE LOADING] Texture loading complete\n")
     

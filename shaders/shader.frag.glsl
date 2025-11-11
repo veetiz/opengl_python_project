@@ -22,8 +22,12 @@ uniform samplerCube shadowMapPoint0;           // Unit 7
 uniform samplerCube shadowMapPoint1;           // Unit 8
 uniform samplerCube shadowMapPoint2;           // Unit 9
 uniform samplerCube shadowMapPoint3;           // Unit 10
+uniform sampler2D roughnessMap;                // Unit 11
+uniform sampler2D aoMap;                       // Unit 12
 
 uniform int useTexture;
+uniform int useRoughnessMap;
+uniform int useAOMap;
 
 // Material properties
 uniform vec3 material_ambient;
@@ -178,26 +182,33 @@ float calculateShadowSpot(int index, vec4 fragPosLightSpace, vec3 normal, vec3 l
     return shadow;
 }
 
-vec3 calculateDirectionalLight(vec3 normal, vec3 viewDir, vec3 baseColor, float shadow) {
+vec3 calculateDirectionalLight(vec3 normal, vec3 viewDir, vec3 baseColor, float shadow, float roughness, float ao) {
     vec3 lightDir = normalize(-dirLight_direction);
     
     // Diffuse
     float diff = max(dot(normal, lightDir), 0.0);
     
-    // Specular (Blinn-Phong)
+    // Specular (Blinn-Phong) - roughness affects shininess
+    // Higher roughness = lower shininess = larger, dimmer highlights
+    float shininess = material_shininess * (1.0 - roughness * 0.9); // Reduce shininess by up to 90%
+    shininess = max(shininess, 1.0); // Minimum shininess of 1
+    
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), material_shininess);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);
+    
+    // Roughness also affects specular intensity
+    float specularIntensity = 1.0 - roughness * 0.7;
     
     // Combine
-    vec3 ambient = material_ambient * baseColor;
+    vec3 ambient = material_ambient * baseColor * ao; // AO affects ambient
     vec3 diffuse = material_diffuse * diff * baseColor;
-    vec3 specular = material_specular * spec;
+    vec3 specular = material_specular * spec * specularIntensity;
     
     // Apply shadow (ambient is not affected by shadows)
     return (ambient + (1.0 - shadow) * (diffuse + specular)) * dirLight_color * dirLight_intensity;
 }
 
-vec3 calculatePointLight(int index, vec3 normal, vec3 viewDir, vec3 baseColor, float shadow) {
+vec3 calculatePointLight(int index, vec3 normal, vec3 viewDir, vec3 baseColor, float shadow, float roughness, float ao) {
     vec3 lightPos = pointLights_position[index];
     vec3 lightColor = pointLights_color[index];
     float intensity = pointLights_intensity[index];
@@ -213,20 +224,25 @@ vec3 calculatePointLight(int index, vec3 normal, vec3 viewDir, vec3 baseColor, f
     // Diffuse
     float diff = max(dot(normal, lightDir), 0.0);
     
-    // Specular (Blinn-Phong)
+    // Specular (Blinn-Phong) - roughness affects shininess
+    float shininess = material_shininess * (1.0 - roughness * 0.9);
+    shininess = max(shininess, 1.0);
+    
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), material_shininess);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);
+    
+    float specularIntensity = 1.0 - roughness * 0.7;
     
     // Combine
-    vec3 ambient = material_ambient * baseColor;
+    vec3 ambient = material_ambient * baseColor * ao;
     vec3 diffuse = material_diffuse * diff * baseColor;
-    vec3 specular = material_specular * spec;
+    vec3 specular = material_specular * spec * specularIntensity;
     
     // Apply shadow (ambient is not affected by shadows)
     return (ambient + (1.0 - shadow) * (diffuse + specular)) * lightColor * intensity * attenuation;
 }
 
-vec3 calculateSpotLight(int index, vec3 normal, vec3 viewDir, vec3 baseColor, float shadow) {
+vec3 calculateSpotLight(int index, vec3 normal, vec3 viewDir, vec3 baseColor, float shadow, float roughness, float ao) {
     vec3 lightPos = spotLights_position[index];
     vec3 lightDir = normalize(lightPos - fragPos);
     vec3 spotDir = normalize(spotLights_direction[index]);
@@ -245,14 +261,19 @@ vec3 calculateSpotLight(int index, vec3 normal, vec3 viewDir, vec3 baseColor, fl
     // Diffuse
     float diff = max(dot(normal, lightDir), 0.0);
     
-    // Specular (Blinn-Phong)
+    // Specular (Blinn-Phong) - roughness affects shininess
+    float shininess = material_shininess * (1.0 - roughness * 0.9);
+    shininess = max(shininess, 1.0);
+    
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), material_shininess);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);
+    
+    float specularIntensity = 1.0 - roughness * 0.7;
     
     // Combine
-    vec3 ambient = material_ambient * baseColor;
+    vec3 ambient = material_ambient * baseColor * ao;
     vec3 diffuse = material_diffuse * diff * baseColor;
-    vec3 specular = material_specular * spec;
+    vec3 specular = material_specular * spec * specularIntensity;
     
     vec3 lightColor = spotLights_color[index];
     float intensity = spotLights_intensity[index];
@@ -285,6 +306,18 @@ void main() {
         baseColor = fragColor;
     }
     
+    // Sample roughness (if available)
+    float roughness = 0.5; // Default medium roughness
+    if (useRoughnessMap == 1) {
+        roughness = texture(roughnessMap, fragTexCoord).r; // Use red channel
+    }
+    
+    // Sample ambient occlusion (if available)
+    float ao = 1.0; // Default no occlusion
+    if (useAOMap == 1) {
+        ao = texture(aoMap, fragTexCoord).r; // Use red channel
+    }
+    
     // Apply lighting if enabled
     if (lightingEnabled == 1) {
         vec3 result = vec3(0.0);
@@ -296,7 +329,7 @@ void main() {
                 vec3 lightDir = normalize(-dirLight_direction);
                 shadow = calculateShadowDirectional(fragPosLightSpaceDirectional, norm, lightDir);
             }
-            result += calculateDirectionalLight(norm, viewDir, baseColor, shadow);
+            result += calculateDirectionalLight(norm, viewDir, baseColor, shadow, roughness, ao);
         }
         
         // Point lights
@@ -305,7 +338,7 @@ void main() {
             if (useShadowsPoint[i] == 1) {
                 shadow = calculateShadowPoint(i, fragPos);
             }
-            result += calculatePointLight(i, norm, viewDir, baseColor, shadow);
+            result += calculatePointLight(i, norm, viewDir, baseColor, shadow, roughness, ao);
         }
         
         // Spot lights
@@ -315,17 +348,17 @@ void main() {
                 vec3 lightDir = normalize(spotLights_position[i] - fragPos);
                 shadow = calculateShadowSpot(i, fragPosLightSpaceSpot[i], norm, lightDir);
             }
-            result += calculateSpotLight(i, norm, viewDir, baseColor, shadow);
+            result += calculateSpotLight(i, norm, viewDir, baseColor, shadow, roughness, ao);
         }
         
-        // If no lights, use ambient only
+        // If no lights, use ambient only (with AO)
         if (hasDirectionalLight == 0 && numPointLights == 0 && numSpotLights == 0) {
-            result = material_ambient * baseColor;
+            result = material_ambient * baseColor * ao;
         }
         
         outColor = vec4(result, 1.0);
     } else {
-        // No lighting - just use base color
-        outColor = vec4(baseColor, 1.0);
+        // No lighting - just use base color (still apply AO for depth)
+        outColor = vec4(baseColor * ao, 1.0);
     }
 }
