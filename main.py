@@ -7,7 +7,8 @@ import sys
 import time
 from src import (
     Application, Scene, SplashScene, GameObject, Model, Camera, GameScript, 
-    ModelLoader, Texture, FontLoader, DirectionalLight, PointLight, SpotLight, Material
+    ModelLoader, Texture, FontLoader, DirectionalLight, PointLight, SpotLight, Material,
+    Text3D
 )
 from game.scripts import RotateScript, FPSCounterScript, CameraMovementScript, TextUIScript, SplashTransitionScript
 
@@ -156,7 +157,44 @@ def create_main_scene():
     
     # Note: Texture will be loaded after OpenGL initialization
     
-    # Attach text UI script to load font (for main scene HUD)
+    # === CREATE 3D TEXT ===
+    
+    print("\nAdding 3D text to scene...")
+    
+    # Create a 3D text label floating above the wood quad
+    label_3d = Text3D(
+        label="WoodLabel",
+        text="PBR Material with Shadows",
+        font=None,  # Will be set by text_ui_script
+        position=(0.0, 1.5, 0.0),  # Above the quad
+        size=0.15,  # Size in world units
+        color=(1.0, 1.0, 0.0),  # Yellow
+        billboard=True,  # Always face camera
+        visible=True
+    )
+    scene.add_text3d(label_3d)
+    print(f"[OK] 3D text '{label_3d.label}' added at position {label_3d.position}")
+    
+    # Create another 3D text label (world-oriented)
+    # Note: Text is rendered on XY plane (Z=0), naturally facing +Z direction
+    # Camera is on +Z side looking towards -Z, so we rotate 180° on Y to flip it
+    # Negative X scale fixes the horizontal mirroring caused by Y rotation
+    world_text = Text3D(
+        label="WorldText",
+        text="WORLD",
+        font=None,  # Will be set by text_ui_script
+        position=(0.0, -1.8, 0.0),  # Below the quad
+        rotation=(0.0, 180.0, 0.0),  # Y=180 to face camera
+        size=0.1,  # Larger size for visibility
+        scale=(-1.0, 1.0, 1.0),  # Negative X to flip horizontally (fixes mirroring)
+        color=(0.2, 1.0, 0.2),  # Bright green
+        billboard=False,  # World-oriented (stays in place when camera moves)
+        visible=True
+    )
+    scene.add_text3d(world_text)
+    print(f"[OK] 3D text '{world_text.label}' added at position {world_text.position}")
+    
+    # Attach text UI script to load font (for main scene HUD and 3D text)
     text_ui_script = TextUIScript(font_size=24)
     scene.add_script(text_ui_script)
     
@@ -164,7 +202,7 @@ def create_main_scene():
     fps_script = FPSCounterScript(print_interval=3.0)
     scene.add_script(fps_script)
     
-    print(f"[OK] Main scene created with {scene.object_count} object(s) and {scene.camera_count} camera(s)")
+    print(f"[OK] Main scene created with {scene.object_count} object(s), {scene.camera_count} camera(s), and {scene.text3d_count} 3D text(s)")
     
     return scene, text_ui_script
 

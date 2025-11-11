@@ -59,6 +59,12 @@ class TextUIScript(GameScript):
             if self.scene and hasattr(self.scene, 'set_fonts'):
                 print(f"[TextUIScript] Applying font to SplashScene")
                 self.scene.set_fonts(self.font, self.font)
+            
+            # Apply font to all Text3D objects in the scene
+            if self.scene and hasattr(self.scene, 'text3d_objects'):
+                for text3d in self.scene.text3d_objects:
+                    text3d.set_font(self.font)
+                    print(f"[TextUIScript] Applied font to 3D text '{text3d.label}'")
         else:
             print(f"[TextUIScript] WARNING: Failed to load font")
     

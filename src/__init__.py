@@ -22,6 +22,8 @@ from .font import Font, Glyph
 from .font_loader import FontLoader
 from .text_renderer import TextRenderer
 from .text2d import Text2D
+from .text3d import Text3D
+from .text3d_renderer import Text3DRenderer
 from .light import Light, DirectionalLight, PointLight, SpotLight
 from .material import Material
 from .shadow_map import ShadowMap
@@ -50,6 +52,8 @@ __all__ = [
     'FontLoader',
     'TextRenderer',
     'Text2D',
+    'Text3D',
+    'Text3DRenderer',
     'Light',
     'DirectionalLight',
     'PointLight',

@@ -27,6 +27,7 @@ class Scene:
         self.game_objects: List['GameObject'] = []
         self.cameras: List['Camera'] = []
         self.lights: List['Light'] = []
+        self.text3d_objects: List = []  # 3D text entities
         self.active_camera_index: int = 0
         self._entities: List['Entity'] = []  # All entities (unified list)
         self.scripts: List['GameScript'] = []  # Global scripts attached to the scene
@@ -183,6 +184,44 @@ class Scene:
     def light_count(self) -> int:
         """Get the total number of lights in the scene."""
         return len(self.lights)
+    
+    # === Text3D Management ===
+    
+    def add_text3d(self, text3d):
+        """
+        Add a 3D text object to the scene.
+        
+        Args:
+            text3d: Text3D object to add
+        """
+        self.text3d_objects.append(text3d)
+        self._entities.append(text3d)
+    
+    def remove_text3d(self, text3d):
+        """
+        Remove a 3D text object from the scene.
+        
+        Args:
+            text3d: Text3D object to remove
+        """
+        if text3d in self.text3d_objects:
+            self.text3d_objects.remove(text3d)
+            if text3d in self._entities:
+                self._entities.remove(text3d)
+    
+    def get_active_text3d(self) -> List:
+        """
+        Get all active 3D text objects in the scene.
+        
+        Returns:
+            List of active Text3D objects
+        """
+        return [text for text in self.text3d_objects if text.active]
+    
+    @property
+    def text3d_count(self) -> int:
+        """Get the total number of 3D text objects in the scene."""
+        return len(self.text3d_objects)
     
     # === Entity Management (Generic) ===
     

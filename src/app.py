@@ -11,6 +11,7 @@ from .renderer import OpenGLRenderer
 from .scene import Scene
 from .input import Input
 from .text_renderer import TextRenderer
+from .text3d_renderer import Text3DRenderer
 
 
 class Application:
@@ -82,10 +83,16 @@ class Application:
             print("ERROR: Failed to initialize renderer")
             return False
         
-        # Initialize Text Renderer
+        # Initialize Text Renderer (2D)
         self.text_renderer = TextRenderer()
         if not self.text_renderer.init(self.width, self.height):
             print("ERROR: Failed to initialize TextRenderer")
+            return False
+        
+        # Initialize Text3D Renderer
+        self.text3d_renderer = Text3DRenderer()
+        if not self.text3d_renderer.init():
+            print("ERROR: Failed to initialize Text3DRenderer")
             return False
         
         # Note: Textures will be loaded after scene is set in run()
@@ -366,7 +373,23 @@ class Application:
         # Render 3D scene
         self.renderer.render_frame()
         
-        # Render text entities from scene (if any)
+        # Render 3D text in world space
+        if self.text3d_renderer and self.renderer and self.renderer.scene:
+            scene = self.renderer.scene
+            active_camera = scene.get_active_camera()
+            
+            if active_camera and len(scene.text3d_objects) > 0:
+                view_matrix = active_camera.get_view_matrix()
+                projection_matrix = active_camera.get_projection_matrix()
+                
+                active_text3d = scene.get_active_text3d()
+                self.text3d_renderer.render_text_objects(
+                    active_text3d,
+                    view_matrix,
+                    projection_matrix
+                )
+        
+        # Render 2D text entities from scene (if any)
         if self.text_renderer and self.renderer and self.renderer.scene:
             scene = self.renderer.scene
             # Check if scene has text entities (like SplashScene)
@@ -393,6 +416,9 @@ class Application:
         
         if self.text_renderer:
             self.text_renderer.cleanup()
+        
+        if self.text3d_renderer:
+            self.text3d_renderer.cleanup()
         
         if self.window:
             self.window.cleanup()
