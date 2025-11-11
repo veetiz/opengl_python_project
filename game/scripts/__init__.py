@@ -10,12 +10,16 @@ from .example_scripts import (
     CameraOrbitScript
 )
 from .camera_movement import CameraMovementScript
+from .text_ui_script import TextUIScript
+from .splash_transition_script import SplashTransitionScript
 
 __all__ = [
     'RotateScript',
     'OscillateScript',
     'FPSCounterScript',
     'CameraOrbitScript',
-    'CameraMovementScript'
+    'CameraMovementScript',
+    'TextUIScript',
+    'SplashTransitionScript'
 ]
 

@@ -12,11 +12,16 @@ from .model import Model
 from .entity import Entity
 from .gameobject import GameObject, Transform
 from .scene import Scene
+from .splash_scene import SplashScene
 from .camera import Camera
 from .input import Input, Keyboard, Mouse
 from .gamescript import GameScript
 from .texture import Texture
 from .model_loader import ModelLoader
+from .font import Font, Glyph
+from .font_loader import FontLoader
+from .text_renderer import TextRenderer
+from .text2d import Text2D
 
 __all__ = [
     'Window',
@@ -29,12 +34,18 @@ __all__ = [
     'GameObject',
     'Transform',
     'Scene',
+    'SplashScene',
     'Camera',
     'Input',
     'Keyboard',
     'Mouse',
     'GameScript',
     'Texture',
-    'ModelLoader'
+    'ModelLoader',
+    'Font',
+    'Glyph',
+    'FontLoader',
+    'TextRenderer',
+    'Text2D',
 ]
 __version__ = '2.0.0'

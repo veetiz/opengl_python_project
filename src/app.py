@@ -10,6 +10,7 @@ from .window import Window
 from .renderer import OpenGLRenderer
 from .scene import Scene
 from .input import Input
+from .text_renderer import TextRenderer
 
 
 class Application:
@@ -40,10 +41,12 @@ class Application:
         self.window: Window = None
         self.renderer: OpenGLRenderer = None
         self.input: Input = None
+        self.text_renderer: TextRenderer = None
         
         # State
         self.is_running = False
         self.framebuffer_resized = False
+        self._ui_text_callback = None
     
     def init(self) -> bool:
         """
@@ -77,6 +80,12 @@ class Application:
         )
         if not self.renderer.init(self.window):
             print("ERROR: Failed to initialize renderer")
+            return False
+        
+        # Initialize Text Renderer
+        self.text_renderer = TextRenderer()
+        if not self.text_renderer.init(self.width, self.height):
+            print("ERROR: Failed to initialize TextRenderer")
             return False
         
         # Note: Textures will be loaded after scene is set in run()
@@ -126,12 +135,32 @@ class Application:
         """
         if self.renderer:
             self.renderer.set_scene(scene)
+        
+        # Update screen size for splash scenes
+        if hasattr(scene, 'set_screen_size'):
+            scene.set_screen_size(self.width, self.height)
+    
+    def set_ui_text_callback(self, callback):
+        """
+        Set a callback function for rendering UI text.
+        
+        The callback should accept a TextRenderer instance as parameter.
+        Example: lambda text_renderer: text_renderer.render_text(font, "Hello", 10, 10)
+        
+        Args:
+            callback: Function that takes TextRenderer as parameter
+        """
+        self._ui_text_callback = callback
     
     def _on_framebuffer_resize(self, width: int, height: int):
         """Handle framebuffer resize events."""
         self.framebuffer_resized = True
+        self.width = width
+        self.height = height
         if self.renderer:
             self.renderer.on_resize(width, height)
+        if self.text_renderer:
+            self.text_renderer.set_projection(width, height)
     
     def _on_mouse_move(self, xpos: float, ypos: float):
         """Handle mouse movement."""
@@ -163,6 +192,11 @@ class Application:
         
         # Now that scene is set AND OpenGL context exists, load textures
         self._load_deferred_textures()
+        
+        # Start all scripts before main loop so fonts are loaded
+        if scene:
+            print("\n[APP] Starting scene scripts before main loop...")
+            scene.update_scripts(0.0)  # Call with delta_time=0 to trigger on_start
         
         self.is_running = True
         self._main_loop()
@@ -268,7 +302,24 @@ class Application:
     
     def _render_frame(self):
         """Render a single frame."""
+        # Render 3D scene
         self.renderer.render_frame()
+        
+        # Render text entities from scene (if any)
+        if self.text_renderer and self.renderer and self.renderer.scene:
+            scene = self.renderer.scene
+            # Check if scene has text entities (like SplashScene)
+            if hasattr(scene, 'get_text_entities'):
+                text_entities = scene.get_text_entities()
+                self.text_renderer.render_text_objects(text_entities)
+        
+        # Render additional UI text overlays after 3D rendering
+        if self.text_renderer and hasattr(self, '_ui_text_callback') and self._ui_text_callback:
+            self._ui_text_callback(self.text_renderer)
+        
+        # Swap buffers AFTER all rendering (3D + text) is complete
+        if self.window:
+            self.window.swap_buffers()
     
     def cleanup(self):
         """Clean up all application resources."""
@@ -278,6 +329,9 @@ class Application:
         
         if self.renderer:
             self.renderer.cleanup()
+        
+        if self.text_renderer:
+            self.text_renderer.cleanup()
         
         if self.window:
             self.window.cleanup()

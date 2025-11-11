@@ -57,46 +57,54 @@ class OpenGLRenderer:
         Returns:
             True if successful, False otherwise
         """
-        self.window = window
-        
-        # Print OpenGL info
-        print(f"[OK] OpenGL Version: {glGetString(GL_VERSION).decode()}")
-        print(f"[OK] GLSL Version: {glGetString(GL_SHADING_LANGUAGE_VERSION).decode()}")
-        print(f"[OK] Renderer: {glGetString(GL_RENDERER).decode()}")
-        
-        # Enable debug output if requested
-        if self.enable_validation:
-            glEnable(GL_DEBUG_OUTPUT)
-            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS)
-        
-        # Set up OpenGL state
-        glEnable(GL_DEPTH_TEST)
-        glDepthFunc(GL_LESS)
-        
-        # Disable face culling for now (for debugging)
-        # glEnable(GL_CULL_FACE)
-        # glCullFace(GL_BACK)
-        # glFrontFace(GL_CCW)  # Counter-clockwise is front face
-        
-        glClearColor(0.0, 0.0, 0.0, 1.0)
-        
-        # Load and compile shaders
-        if not self._create_shader_program():
+        try:
+            self.window = window
+            
+            # Print OpenGL info
+            print(f"[OK] OpenGL Version: {glGetString(GL_VERSION).decode()}")
+            print(f"[OK] GLSL Version: {glGetString(GL_SHADING_LANGUAGE_VERSION).decode()}")
+            print(f"[OK] Renderer: {glGetString(GL_RENDERER).decode()}")
+            
+            # Enable debug output if requested
+            if self.enable_validation:
+                glEnable(GL_DEBUG_OUTPUT)
+                glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS)
+            
+            # Set up OpenGL state
+            glEnable(GL_DEPTH_TEST)
+            glDepthFunc(GL_LESS)
+            
+            # Disable face culling for now (for debugging)
+            # glEnable(GL_CULL_FACE)
+            # glCullFace(GL_BACK)
+            # glFrontFace(GL_CCW)  # Counter-clockwise is front face
+            
+            glClearColor(0.0, 0.0, 0.0, 1.0)
+            
+            # Load and compile shaders
+            if not self._create_shader_program():
+                print("ERROR: Shader program creation failed")
+                return False
+            
+            # Get uniform locations
+            self.model_loc = glGetUniformLocation(self.shader_program, "model")
+            self.view_loc = glGetUniformLocation(self.shader_program, "view")
+            self.projection_loc = glGetUniformLocation(self.shader_program, "projection")
+            self.texture_sampler_loc = glGetUniformLocation(self.shader_program, "textureSampler")
+            self.use_texture_loc = glGetUniformLocation(self.shader_program, "useTexture")
+            
+            # Create VAO
+            self.vao = glGenVertexArrays(1)
+            glBindVertexArray(self.vao)
+            
+            print("[OK] OpenGL renderer initialized")
+            return True
+            
+        except Exception as e:
+            print(f"ERROR: Renderer initialization failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
-        
-        # Get uniform locations
-        self.model_loc = glGetUniformLocation(self.shader_program, "model")
-        self.view_loc = glGetUniformLocation(self.shader_program, "view")
-        self.projection_loc = glGetUniformLocation(self.shader_program, "projection")
-        self.texture_sampler_loc = glGetUniformLocation(self.shader_program, "textureSampler")
-        self.use_texture_loc = glGetUniformLocation(self.shader_program, "useTexture")
-        
-        # Create VAO
-        self.vao = glGenVertexArrays(1)
-        glBindVertexArray(self.vao)
-        
-        print("[OK] OpenGL renderer initialized")
-        return True
     
     def _create_shader_program(self) -> bool:
         """Load and compile shaders."""
@@ -120,10 +128,21 @@ class OpenGLRenderer:
                 frag_source = f.read()
             
             # Compile shaders
-            self.shader_program = compileProgram(
-                compileShader(vert_source, GL_VERTEX_SHADER),
-                compileShader(frag_source, GL_FRAGMENT_SHADER)
-            )
+            try:
+                vert_shader = compileShader(vert_source, GL_VERTEX_SHADER)
+                print("[DEBUG] Vertex shader compiled")
+            except Exception as e:
+                print(f"ERROR: Vertex shader compilation failed: {e}")
+                raise
+            
+            try:
+                frag_shader = compileShader(frag_source, GL_FRAGMENT_SHADER)
+                print("[DEBUG] Fragment shader compiled")
+            except Exception as e:
+                print(f"ERROR: Fragment shader compilation failed: {e}")
+                raise
+            
+            self.shader_program = compileProgram(vert_shader, frag_shader)
             
             print("[OK] Shaders compiled successfully")
             return True
@@ -155,6 +174,9 @@ class OpenGLRenderer:
         """Create OpenGL vertex buffer for a mesh."""
         try:
             from .vertex import Vertex as VertexClass
+            
+            # Bind VAO first (required for setting up vertex attributes)
+            glBindVertexArray(self.vao)
             
             # Generate buffers
             vbo = glGenBuffers(1)
@@ -196,7 +218,9 @@ class OpenGLRenderer:
                 mesh.ebo = ebo
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
                 glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.index_data.nbytes, mesh.index_data, GL_STATIC_DRAW)
-                print(f"[DEBUG] Created EBO for mesh with {mesh.index_count} indices")
+            
+            # Unbind VAO
+            glBindVertexArray(0)
             
             return True
             
@@ -238,29 +262,12 @@ class OpenGLRenderer:
                     glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model_matrix)
                     
                     # Draw all meshes in the model
-                    for mesh_idx, mesh in enumerate(game_object.model.meshes):
+                    for mesh in game_object.model.meshes:
                         if hasattr(mesh, 'vbo') and mesh.vbo:
                             glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo)
                             
                             # Bind texture if available
                             has_texture = hasattr(mesh, 'texture') and mesh.texture and mesh.texture.texture_id
-                            
-                            # Debug output (only first frame)
-                            if not hasattr(self, '_debug_printed'):
-                                print(f"\n[RENDER DEBUG] Object: {game_object.name}, Mesh {mesh_idx}")
-                                print(f"[RENDER DEBUG]   Vertex count: {mesh.vertex_count}")
-                                print(f"[RENDER DEBUG]   Has indices: {mesh.has_indices}")
-                                print(f"[RENDER DEBUG]   Index count: {mesh.index_count if mesh.has_indices else 'N/A'}")
-                                print(f"[RENDER DEBUG]   Has EBO: {hasattr(mesh, 'ebo') and mesh.ebo}")
-                                print(f"[RENDER DEBUG]   has 'texture' attr: {hasattr(mesh, 'texture')}")
-                                if hasattr(mesh, 'texture'):
-                                    print(f"[RENDER DEBUG]   mesh.texture is not None: {mesh.texture is not None}")
-                                    if mesh.texture:
-                                        print(f"[RENDER DEBUG]   texture.texture_id: {mesh.texture.texture_id}")
-                                print(f"[RENDER DEBUG]   has_texture (final): {has_texture}")
-                                print(f"[RENDER DEBUG]   use_texture_loc: {self.use_texture_loc}")
-                                print(f"[RENDER DEBUG]   texture_sampler_loc: {self.texture_sampler_loc}")
-                                self._debug_printed = True
                             
                             if has_texture:
                                 glActiveTexture(GL_TEXTURE0)  # Explicitly activate texture unit 0
@@ -281,8 +288,7 @@ class OpenGLRenderer:
                             if hasattr(mesh, 'texture') and mesh.texture:
                                 mesh.texture.unbind()
             
-            # Swap buffers (present)
-            self.window.swap_buffers()
+            # NOTE: Don't swap buffers here - let Application do it after text rendering
             
         except Exception as e:
             print(f"WARNING: Error during frame rendering: {e}")

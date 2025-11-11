@@ -25,8 +25,13 @@ class GameScript:
         self.scene: Optional['Scene'] = None
         self.enabled = True
     
-    def on_attach(self):
-        """Called when the script is attached to an entity or scene."""
+    def on_attach(self, entity_or_scene):
+        """
+        Called when the script is attached to an entity or scene.
+        
+        Args:
+            entity_or_scene: The entity or scene this script is attached to
+        """
         pass
     
     def on_detach(self):

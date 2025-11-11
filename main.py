@@ -4,27 +4,16 @@ Entry point for the OpenGL application.
 """
 
 import sys
-from src import Application, Scene, GameObject, Model, Camera, GameScript, ModelLoader, Texture
-from game.scripts import RotateScript, FPSCounterScript, CameraMovementScript
+import time
+from src import Application, Scene, SplashScene, GameObject, Model, Camera, GameScript, ModelLoader, Texture, FontLoader
+from game.scripts import RotateScript, FPSCounterScript, CameraMovementScript, TextUIScript, SplashTransitionScript
 
 
-def main():
-    """Main entry point."""
+def create_main_scene():
+    """Create the main game scene with 3D objects."""
+    print("\n" + "=" * 70)
+    print("Creating main scene...")
     print("=" * 70)
-    print(" OpenGL Triangle Renderer - Python")
-    print("=" * 70)
-    print()
-    
-    # Create application with desired settings
-    app = Application(
-        width=800,
-        height=600,
-        title="OpenGL Triangle - Python",
-        enable_validation=False  # Set to True for debugging
-    )
-    
-    # Create scene (before initialization for aspect ratio calculation)
-    print("\nCreating scene...")
     scene = Scene("Main Scene")
     
     # Create and add multiple cameras to scene
@@ -100,25 +89,99 @@ def main():
     
     # Note: Texture will be loaded after OpenGL initialization
     
-    # Attach a global FPS counter script to the scene (global script)
-    fps_script = FPSCounterScript(print_interval=3.0)  # Print FPS every 3 seconds
+    # Attach text UI script to load font (for main scene HUD)
+    text_ui_script = TextUIScript(font_size=24)
+    scene.add_script(text_ui_script)
+    
+    # Attach a global FPS counter script
+    fps_script = FPSCounterScript(print_interval=3.0)
     scene.add_script(fps_script)
-    print(f"[OK] FPSCounterScript added to scene (global)")
     
-    # Count total scripts
-    entity_script_count = sum(len(entity.scripts) for entity in scene.get_all_entities())
+    print(f"[OK] Main scene created with {scene.object_count} object(s) and {scene.camera_count} camera(s)")
     
-    print(f"[OK] Scene created with {scene.object_count} object(s) and {scene.camera_count} camera(s)")
-    print(f"[OK] Total scripts: {entity_script_count} entity scripts + {len(scene.scripts)} global scripts")
-    
+    return scene, text_ui_script
+
+
+def create_splash_scene(app, main_scene):
+    """Create the splash screen scene."""
     print("\n" + "=" * 70)
-    print(" Ready to render!")
+    print("Creating splash scene...")
+    print("=" * 70)
+    
+    splash = SplashScene(name="Splash")
+    splash.set_title("OpenGL Game Engine")
+    splash.set_loading_text("Loading...")
+    
+    # Add transition script to automatically switch to main scene
+    transition_script = SplashTransitionScript(
+        duration=3.0,  # Show splash for 3 seconds
+        main_scene=main_scene,
+        app=app
+    )
+    splash.add_script(transition_script)
+    
+    # Add font loading script for splash text
+    font_script = TextUIScript(font_size=48)
+    splash.add_script(font_script)
+    
+    print(f"[OK] Splash scene created")
+    
+    return splash, font_script
+
+
+def main():
+    """Main entry point."""
+    print("=" * 70)
+    print(" OpenGL Game Engine - Python")
     print("=" * 70)
     print()
     
-    # Run the application with the scene
-    # app.run() will call init(), then set the scene, then start the main loop
-    return app.run(scene)
+    # Create application with desired settings
+    app = Application(
+        width=800,
+        height=600,
+        title="OpenGL Game Engine",
+        enable_validation=False  # Set to True for debugging
+    )
+    
+    # Create main scene first (so it's ready for transition)
+    main_scene, main_text_script = create_main_scene()
+    
+    # Create splash scene with reference to main scene for transition
+    splash_scene, splash_font_script = create_splash_scene(app, main_scene)
+    
+    # Set up UI text callback
+    def render_ui_callback(text_renderer):
+        """Render UI text based on current scene."""
+        current_scene = app.renderer.scene if app.renderer else None
+        
+        # Splash scene rendering
+        if current_scene == splash_scene and splash_font_script.font:
+            # Apply fonts to splash text entities if not already set
+            if not splash_scene.title_text.font:
+                splash_scene.set_fonts(splash_font_script.font, splash_font_script.font)
+        
+        # Main scene rendering
+        elif current_scene == main_scene and main_text_script.font:
+            # Render control instructions
+            text_renderer.render_text(
+                main_text_script.font,
+                "WASD: Move | Arrows: Rotate | TAB: Mouse | C: Camera | ESC: Exit",
+                10, 10,
+                scale=0.7,
+                color=(0.8, 0.8, 0.8)
+            )
+    
+    app.set_ui_text_callback(render_ui_callback)
+    
+    print("\n" + "=" * 70)
+    print(" Ready to start!")
+    print("=" * 70)
+    print()
+    
+    # Run the application starting with splash scene
+    # Transition script will automatically switch to main scene after 2 seconds
+    return app.run(splash_scene)
 
 
 if __name__ == "__main__":

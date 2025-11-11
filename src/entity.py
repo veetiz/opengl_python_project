@@ -121,8 +121,8 @@ class Entity:
         script.entity = self
         self.scripts.append(script)
         
-        # Call on_attach callback
-        script.on_attach()
+        # Call on_attach callback with this entity
+        script.on_attach(self)
         
         # If scripts have already been started, start this new one
         if self._scripts_started:
