@@ -1,0 +1,49 @@
+======================================================================
+ Vulkan Triangle Renderer - Python
+======================================================================
+
+============================================================
+Initializing Vulkan Application
+============================================================
+[OK] Window created: 800x600
+[OK] Vulkan instance created (validation: False)
+[OK] Vulkan surface created
+[OK] Physical device selected: Intel(R) Iris(R) Xe Graphics
+[OK] Logical device created
+[OK] Swap chain created (3 images)
+[OK] Created 3 image views
+[OK] Render pass created
+[OK] Graphics pipeline created
+[OK] Created 3 framebuffers
+[OK] Command pool created
+[OK] Allocated 2 command buffers
+[OK] Created synchronization objects
+[OK] Vulkan renderer initialized
+============================================================
+Initialization complete!
+============================================================
+
+Creating triangle mesh...
+[OK] Triangle mesh added to renderer
+
+======================================================================
+ Ready to render!
+======================================================================
+
+
+Entering main loop...
+Controls:
+  - ESC: Exit application
+  - Close window: Exit application
+------------------------------------------------------------
+[DEBUG] render_frame: Starting first frame
+[DEBUG] render_frame: Waiting for fence...
+[DEBUG] render_frame: Acquiring next image...
+[DEBUG] render_frame: Got image index 0
+[DEBUG] render_frame: Recording command buffer...
+[DEBUG] _record_command_buffer: Starting for image 0
+[DEBUG] _record_command_buffer: Beginning command buffer
+[DEBUG] _record_command_buffer: Creating clear color
+[DEBUG] _record_command_buffer: Creating render pass info
+[DEBUG] _record_command_buffer: Beginning render pass
+[DEBUG] _record_command_buffer: Binding pipeline (pipeline=<cdata 'struct VkPipeline_T *' NULL>)
