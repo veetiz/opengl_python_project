@@ -112,6 +112,13 @@ class OpenGLRenderer:
             # Point light uniforms
             self.num_point_lights_loc = glGetUniformLocation(self.shader_program, "numPointLights")
             
+            # Spot light uniforms
+            self.num_spot_lights_loc = glGetUniformLocation(self.shader_program, "numSpotLights")
+            
+            # Normal mapping uniforms
+            self.normal_map_loc = glGetUniformLocation(self.shader_program, "normalMap")
+            self.use_normal_map_loc = glGetUniformLocation(self.shader_program, "useNormalMap")
+            
             # Create VAO
             self.vao = glGenVertexArrays(1)
             glBindVertexArray(self.vao)
@@ -263,12 +270,22 @@ class OpenGLRenderer:
             glUniform3fv(self.material_diffuse_loc, 1, mat.diffuse)
             glUniform3fv(self.material_specular_loc, 1, mat.specular)
             glUniform1f(self.material_shininess_loc, mat.shininess)
+            
+            # Bind normal map if available
+            if mat.normal_map and mat.normal_map.texture_id:
+                glActiveTexture(GL_TEXTURE1)  # Use texture unit 1 for normal map
+                mat.normal_map.bind(1)
+                glUniform1i(self.normal_map_loc, 1)  # Set sampler to unit 1
+                glUniform1i(self.use_normal_map_loc, 1)  # Enable normal mapping
+            else:
+                glUniform1i(self.use_normal_map_loc, 0)  # Disable normal mapping
         else:
             # Default material
             glUniform3fv(self.material_ambient_loc, 1, [0.2, 0.2, 0.2])
             glUniform3fv(self.material_diffuse_loc, 1, [0.8, 0.8, 0.8])
             glUniform3fv(self.material_specular_loc, 1, [1.0, 1.0, 1.0])
             glUniform1f(self.material_shininess_loc, 32.0)
+            glUniform1i(self.use_normal_map_loc, 0)  # Disable normal mapping
     
     def _setup_lighting(self):
         """Set up lighting uniforms for the current scene."""
@@ -288,6 +305,7 @@ class OpenGLRenderer:
         # Separate lights by type
         directional_light = None
         point_lights = []
+        spot_lights = []
         
         for light in active_lights:
             light_data = light.get_light_data()
@@ -297,6 +315,9 @@ class OpenGLRenderer:
             elif light_data['type'] == 'point':
                 if len(point_lights) < 4:  # Maximum 4 point lights
                     point_lights.append(light)
+            elif light_data['type'] == 'spot':
+                if len(spot_lights) < 4:  # Maximum 4 spot lights
+                    spot_lights.append(light)
         
         # Set directional light
         if directional_light:
@@ -312,7 +333,6 @@ class OpenGLRenderer:
         glUniform1i(self.num_point_lights_loc, len(point_lights))
         for i, point_light in enumerate(point_lights):
             data = point_light.get_light_data()
-            # Get uniform locations for this point light index
             pos_loc = glGetUniformLocation(self.shader_program, f"pointLights_position[{i}]")
             color_loc = glGetUniformLocation(self.shader_program, f"pointLights_color[{i}]")
             intensity_loc = glGetUniformLocation(self.shader_program, f"pointLights_intensity[{i}]")
@@ -323,6 +343,30 @@ class OpenGLRenderer:
             glUniform3fv(pos_loc, 1, data['position'])
             glUniform3fv(color_loc, 1, data['color'])
             glUniform1f(intensity_loc, data['intensity'])
+            glUniform1f(constant_loc, data['constant'])
+            glUniform1f(linear_loc, data['linear'])
+            glUniform1f(quadratic_loc, data['quadratic'])
+        
+        # Set spot lights
+        glUniform1i(self.num_spot_lights_loc, len(spot_lights))
+        for i, spot_light in enumerate(spot_lights):
+            data = spot_light.get_light_data()
+            pos_loc = glGetUniformLocation(self.shader_program, f"spotLights_position[{i}]")
+            dir_loc = glGetUniformLocation(self.shader_program, f"spotLights_direction[{i}]")
+            color_loc = glGetUniformLocation(self.shader_program, f"spotLights_color[{i}]")
+            intensity_loc = glGetUniformLocation(self.shader_program, f"spotLights_intensity[{i}]")
+            inner_cutoff_loc = glGetUniformLocation(self.shader_program, f"spotLights_innerCutoff[{i}]")
+            outer_cutoff_loc = glGetUniformLocation(self.shader_program, f"spotLights_outerCutoff[{i}]")
+            constant_loc = glGetUniformLocation(self.shader_program, f"spotLights_constant[{i}]")
+            linear_loc = glGetUniformLocation(self.shader_program, f"spotLights_linear[{i}]")
+            quadratic_loc = glGetUniformLocation(self.shader_program, f"spotLights_quadratic[{i}]")
+            
+            glUniform3fv(pos_loc, 1, data['position'])
+            glUniform3fv(dir_loc, 1, data['direction'])
+            glUniform3fv(color_loc, 1, data['color'])
+            glUniform1f(intensity_loc, data['intensity'])
+            glUniform1f(inner_cutoff_loc, data['inner_cutoff'])
+            glUniform1f(outer_cutoff_loc, data['outer_cutoff'])
             glUniform1f(constant_loc, data['constant'])
             glUniform1f(linear_loc, data['linear'])
             glUniform1f(quadratic_loc, data['quadratic'])
@@ -372,16 +416,30 @@ class OpenGLRenderer:
                         if hasattr(mesh, 'vbo') and mesh.vbo:
                             glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo)
                             
-                            # Bind texture if available
+                            # Bind diffuse texture if available
                             has_texture = hasattr(mesh, 'texture') and mesh.texture and mesh.texture.texture_id
                             
                             if has_texture:
-                                glActiveTexture(GL_TEXTURE0)  # Explicitly activate texture unit 0
-                                mesh.texture.bind(0)  # Bind to texture unit 0
-                                glUniform1i(self.texture_sampler_loc, 0)  # Set sampler to unit 0
-                                glUniform1i(self.use_texture_loc, 1)  # Enable texture
+                                glActiveTexture(GL_TEXTURE0)
+                                mesh.texture.bind(0)
+                                glUniform1i(self.texture_sampler_loc, 0)
+                                glUniform1i(self.use_texture_loc, 1)
                             else:
-                                glUniform1i(self.use_texture_loc, 0)  # Disable texture
+                                glUniform1i(self.use_texture_loc, 0)
+                            
+                            # Bind normal map if available (from material)
+                            has_normal_map = (hasattr(game_object, 'material') and 
+                                            game_object.material and 
+                                            game_object.material.normal_map and 
+                                            game_object.material.normal_map.texture_id)
+                            
+                            if has_normal_map:
+                                glActiveTexture(GL_TEXTURE1)
+                                game_object.material.normal_map.bind(1)
+                                glUniform1i(self.normal_map_loc, 1)
+                                glUniform1i(self.use_normal_map_loc, 1)
+                            else:
+                                glUniform1i(self.use_normal_map_loc, 0)
                             
                             # Use indexed rendering if available
                             if mesh.has_indices and hasattr(mesh, 'ebo') and mesh.ebo:

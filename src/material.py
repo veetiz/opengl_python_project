@@ -20,7 +20,8 @@ class Material:
         diffuse: Tuple[float, float, float] = (0.8, 0.8, 0.8),
         specular: Tuple[float, float, float] = (1.0, 1.0, 1.0),
         shininess: float = 32.0,
-        texture: Optional[Texture] = None
+        texture: Optional[Texture] = None,
+        normal_map: Optional[Texture] = None
     ):
         """
         Initialize a material.
@@ -31,7 +32,8 @@ class Material:
             diffuse: Diffuse color (main surface color)
             specular: Specular color (highlight color)
             shininess: Shininess factor (higher = smaller, sharper highlights)
-            texture: Optional texture (overrides diffuse color if present)
+            texture: Optional diffuse/albedo texture
+            normal_map: Optional normal map texture for surface detail
         """
         self.name = name
         self.ambient = ambient
@@ -39,6 +41,7 @@ class Material:
         self.specular = specular
         self.shininess = shininess
         self.texture = texture
+        self.normal_map = normal_map
     
     def set_ambient(self, ambient: Tuple[float, float, float]):
         """Set ambient color."""
@@ -57,8 +60,12 @@ class Material:
         self.shininess = max(1.0, shininess)  # Clamp to minimum of 1
     
     def set_texture(self, texture: Optional[Texture]):
-        """Set or update the texture."""
+        """Set or update the diffuse texture."""
         self.texture = texture
+    
+    def set_normal_map(self, normal_map: Optional[Texture]):
+        """Set or update the normal map texture."""
+        self.normal_map = normal_map
     
     @staticmethod
     def create_default() -> 'Material':

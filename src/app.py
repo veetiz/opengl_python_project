@@ -104,9 +104,10 @@ class Application:
         print("\n[TEXTURE LOADING] Loading deferred textures...")
         
         for game_object in self.renderer.scene.game_objects:
+            # Load diffuse texture
             if hasattr(game_object, '_texture_path') and game_object._texture_path:
                 texture_path = game_object._texture_path
-                print(f"[TEXTURE LOADING] Loading texture for '{game_object.name}': {texture_path}")
+                print(f"[TEXTURE LOADING] Loading diffuse texture for '{game_object.name}': {texture_path}")
                 
                 try:
                     texture = Texture(texture_path)
@@ -123,6 +124,26 @@ class Application:
                     
                 except Exception as e:
                     print(f"[TEXTURE LOADING] [ERROR] Failed to load texture: {e}")
+            
+            # Load normal map
+            if hasattr(game_object, '_normal_map_path') and game_object._normal_map_path:
+                normal_map_path = game_object._normal_map_path
+                print(f"[TEXTURE LOADING] Loading normal map for '{game_object.name}': {normal_map_path}")
+                
+                try:
+                    normal_map = Texture(normal_map_path)
+                    print(f"[TEXTURE LOADING] [OK] Loaded normal map: ID={normal_map.texture_id}")
+                    
+                    # Apply normal map to material
+                    if game_object.material:
+                        game_object.material.set_normal_map(normal_map)
+                        print(f"[TEXTURE LOADING] Applied normal map to material")
+                    
+                    # Clear the deferred normal map path
+                    del game_object._normal_map_path
+                    
+                except Exception as e:
+                    print(f"[TEXTURE LOADING] [ERROR] Failed to load normal map: {e}")
         
         print("[TEXTURE LOADING] Texture loading complete\n")
     

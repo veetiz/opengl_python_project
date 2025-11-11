@@ -31,8 +31,24 @@ uniform float pointLights_constant[4];
 uniform float pointLights_linear[4];
 uniform float pointLights_quadratic[4];
 
+// Spot lights (support up to 4)
+uniform int numSpotLights;
+uniform vec3 spotLights_position[4];
+uniform vec3 spotLights_direction[4];
+uniform vec3 spotLights_color[4];
+uniform float spotLights_intensity[4];
+uniform float spotLights_innerCutoff[4];
+uniform float spotLights_outerCutoff[4];
+uniform float spotLights_constant[4];
+uniform float spotLights_linear[4];
+uniform float spotLights_quadratic[4];
+
 // Camera position for specular
 uniform vec3 viewPos;
+
+// Normal mapping
+uniform sampler2D normalMap;
+uniform int useNormalMap;
 
 // Lighting enabled/disabled
 uniform int lightingEnabled;
@@ -83,8 +99,52 @@ vec3 calculatePointLight(int index, vec3 normal, vec3 viewDir, vec3 baseColor) {
     return (ambient + diffuse + specular) * lightColor * intensity * attenuation;
 }
 
+vec3 calculateSpotLight(int index, vec3 normal, vec3 viewDir, vec3 baseColor) {
+    vec3 lightPos = spotLights_position[index];
+    vec3 lightDir = normalize(lightPos - fragPos);
+    vec3 spotDir = normalize(spotLights_direction[index]);
+    
+    // Calculate spotlight cone effect
+    float theta = dot(lightDir, -spotDir);
+    float epsilon = spotLights_innerCutoff[index] - spotLights_outerCutoff[index];
+    float intensity_factor = clamp((theta - spotLights_outerCutoff[index]) / epsilon, 0.0, 1.0);
+    
+    // Distance attenuation
+    float distance = length(lightPos - fragPos);
+    float attenuation = 1.0 / (spotLights_constant[index] + 
+                               spotLights_linear[index] * distance + 
+                               spotLights_quadratic[index] * distance * distance);
+    
+    // Diffuse
+    float diff = max(dot(normal, lightDir), 0.0);
+    
+    // Specular (Blinn-Phong)
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), material_shininess);
+    
+    // Combine
+    vec3 ambient = material_ambient * baseColor;
+    vec3 diffuse = material_diffuse * diff * baseColor;
+    vec3 specular = material_specular * spec;
+    
+    vec3 lightColor = spotLights_color[index];
+    float intensity = spotLights_intensity[index];
+    
+    return (ambient + diffuse + specular) * lightColor * intensity * attenuation * intensity_factor;
+}
+
 void main() {
-    vec3 norm = normalize(fragNormal);
+    // Get normal (potentially from normal map)
+    vec3 norm;
+    if (useNormalMap == 1) {
+        // Sample normal from normal map and transform to [-1, 1] range
+        norm = texture(normalMap, fragTexCoord).rgb;
+        norm = normalize(norm * 2.0 - 1.0);
+        // TODO: Transform to world space using TBN matrix
+    } else {
+        norm = normalize(fragNormal);
+    }
+    
     vec3 viewDir = normalize(viewPos - fragPos);
     
     // Get base color from texture or vertex color
@@ -110,8 +170,13 @@ void main() {
             result += calculatePointLight(i, norm, viewDir, baseColor);
         }
         
+        // Spot lights
+        for (int i = 0; i < numSpotLights && i < 4; i++) {
+            result += calculateSpotLight(i, norm, viewDir, baseColor);
+        }
+        
         // If no lights, use ambient only
-        if (hasDirectionalLight == 0 && numPointLights == 0) {
+        if (hasDirectionalLight == 0 && numPointLights == 0 && numSpotLights == 0) {
             result = material_ambient * baseColor;
         }
         

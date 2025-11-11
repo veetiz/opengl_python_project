@@ -7,7 +7,7 @@ import sys
 import time
 from src import (
     Application, Scene, SplashScene, GameObject, Model, Camera, GameScript, 
-    ModelLoader, Texture, FontLoader, DirectionalLight, PointLight, Material
+    ModelLoader, Texture, FontLoader, DirectionalLight, PointLight, SpotLight, Material
 )
 from game.scripts import RotateScript, FPSCounterScript, CameraMovementScript, TextUIScript, SplashTransitionScript
 
@@ -88,14 +88,31 @@ def create_main_scene():
     scene.add_light(point_light)
     print(f"[OK] Point light 'LightBulb' added")
     
+    # Add a spotlight
+    spot_light = SpotLight(
+        name="Flashlight",
+        position=(-2.0, 2.0, 3.0),
+        direction=(0.5, -0.5, -1.0),
+        color=(1.0, 0.9, 0.8),  # Slightly warm
+        intensity=0.5,
+        inner_cutoff=12.5,  # degrees
+        outer_cutoff=17.5,  # degrees
+        constant=1.0,
+        linear=0.09,
+        quadratic=0.032
+    )
+    scene.add_light(spot_light)
+    print(f"[OK] Spot light 'Flashlight' added")
+    
     # === CREATE GAME OBJECTS ===
     
     # NOTE: Don't load textures yet - OpenGL context doesn't exist until app.run()
     # Create model with texture path, load texture after init
     print("\nCreating textured quad (texture will load after OpenGL init)...")
     
-    # Store texture path for later loading
+    # Store texture paths for later loading
     texture_path = "assets/textures/Substance_graph_basecolor.png"
+    normal_map_path = "assets/textures/Substance_graph_normal.png"
     
     # Create a simple textured quad (simpler than cube for testing)
     wood_model = Model.create_textured_quad("WoodQuad", texture=None)
@@ -106,7 +123,8 @@ def create_main_scene():
         ambient=(0.4, 0.35, 0.3),  # Higher ambient to keep scene visible
         diffuse=(0.8, 0.7, 0.6),   # Wood-like diffuse
         specular=(0.3, 0.3, 0.3),  # Low specular (wood is not very shiny)
-        shininess=16.0
+        shininess=16.0,
+        normal_map=None  # Will be loaded after OpenGL init
     )
     
     wood_obj = GameObject(
@@ -119,8 +137,9 @@ def create_main_scene():
     )
     scene.add_game_object(wood_obj)
     
-    # Store texture path as custom property so we can load it after OpenGL init
+    # Store texture paths as custom properties so we can load them after OpenGL init
     wood_obj._texture_path = texture_path
+    wood_obj._normal_map_path = normal_map_path
     
     # Attach a rotation script to see it from all angles
     rotate_script = RotateScript(rotation_speed=(0, 30, 0))  # Rotate around Y axis only
