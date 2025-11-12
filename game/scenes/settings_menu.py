@@ -371,6 +371,19 @@ class SettingsMenuScene(Scene):
         if self.ui_manager:
             self.ui_manager.on_mouse_release(x, y, button)
     
+    def on_resize(self, width: int, height: int):
+        """
+        Handle window resize events.
+        Updates UI manager viewport for CSS-like sizing (vw/vh units).
+        
+        Args:
+            width: New window width
+            height: New window height
+        """
+        if self.ui_manager:
+            self.ui_manager.set_window_size(width, height)
+            print(f"[SettingsMenu] UI viewport updated: {width}x{height}")
+    
     def render_ui(self, text_renderer):
         """
         Render modern UI elements.

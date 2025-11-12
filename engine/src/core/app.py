@@ -344,6 +344,11 @@ class Application:
             self.text_renderer.set_projection(width, height)
         if self.ui_renderer:
             self.ui_renderer.set_projection(width, height)
+        
+        # Forward resize event to active scene (for UI updates)
+        if self.renderer and self.renderer.scene:
+            if hasattr(self.renderer.scene, 'on_resize'):
+                self.renderer.scene.on_resize(width, height)
     
     def _on_mouse_move(self, xpos: float, ypos: float):
         """Handle mouse movement."""
