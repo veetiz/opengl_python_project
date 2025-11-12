@@ -6,6 +6,10 @@ Base class for all UI components with CSS-like sizing support.
 from typing import Optional, Union, Tuple
 from .ui_units import UISize, px
 from .ui_element import Anchor
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .ui_calc import UICalc
 
 
 class UIComponent:
@@ -22,6 +26,12 @@ class UIComponent:
         y: Union[float, UISize] = 0.0,
         width: Union[float, UISize] = 100.0,
         height: Union[float, UISize] = 50.0,
+        min_width: Optional[Union[float, UISize]] = None,
+        max_width: Optional[Union[float, UISize]] = None,
+        min_height: Optional[Union[float, UISize]] = None,
+        max_height: Optional[Union[float, UISize]] = None,
+        aspect_ratio: Optional[float] = None,
+        font_size: Union[float, UISize] = 16.0,
         anchor: Anchor = Anchor.TOP_LEFT,
         visible: bool = True,
         enabled: bool = True,
@@ -35,6 +45,12 @@ class UIComponent:
             y: Y position (float=pixels, UISize=with units)
             width: Width (float=pixels, UISize=with units)
             height: Height (float=pixels, UISize=with units)
+            min_width: Minimum width constraint (optional)
+            max_width: Maximum width constraint (optional)
+            min_height: Minimum height constraint (optional)
+            max_height: Maximum height constraint (optional)
+            aspect_ratio: Maintain aspect ratio (width/height, optional)
+            font_size: Font size (float=pixels, UISize=with units, default: 16px)
             anchor: Anchor point
             visible: Visibility
             enabled: Interaction enabled
@@ -52,18 +68,48 @@ class UIComponent:
             
             # Mixed
             UIComponent(x=px(100), y=percent(50), width=vw(30), height=px(40))
+            
+            # With min/max constraints
+            UIComponent(width=vw(50), min_width=px(200), max_width=px(800))
+            
+            # With aspect ratio
+            UIComponent(width=vw(80), aspect_ratio=16/9)  # height auto-calculated
         """
-        # Store original sizes (with units)
-        self.x_size = x if isinstance(x, UISize) else px(x)
-        self.y_size = y if isinstance(y, UISize) else px(y)
-        self.width_size = width if isinstance(width, UISize) else px(width)
-        self.height_size = height if isinstance(height, UISize) else px(height)
+        # Import UICalc here to avoid circular import
+        from .ui_calc import UICalc
+        
+        # Store original sizes (with units or calc)
+        self.x_size = x if isinstance(x, (UISize, UICalc)) else px(x)
+        self.y_size = y if isinstance(y, (UISize, UICalc)) else px(y)
+        self.width_size = width if isinstance(width, (UISize, UICalc)) else px(width)
+        self.height_size = height if isinstance(height, (UISize, UICalc)) else px(height)
+        
+        # Store min/max constraints (with units)
+        self.min_width_size = min_width if min_width is None or isinstance(min_width, UISize) else px(min_width)
+        self.max_width_size = max_width if max_width is None or isinstance(max_width, UISize) else px(max_width)
+        self.min_height_size = min_height if min_height is None or isinstance(min_height, UISize) else px(min_height)
+        self.max_height_size = max_height if max_height is None or isinstance(max_height, UISize) else px(max_height)
+        
+        # Store aspect ratio
+        self.aspect_ratio = aspect_ratio
+        
+        # Store font size
+        self.font_size_value = font_size if isinstance(font_size, (UISize, UICalc)) else px(font_size)
         
         # Compiled sizes (absolute pixels) - set by UICompiler
         self.compiled_x = float(x) if isinstance(x, (int, float)) else 0.0
         self.compiled_y = float(y) if isinstance(y, (int, float)) else 0.0
         self.compiled_width = float(width) if isinstance(width, (int, float)) else 100.0
         self.compiled_height = float(height) if isinstance(height, (int, float)) else 50.0
+        
+        # Compiled min/max (absolute pixels) - set by UICompiler
+        self.compiled_min_width: Optional[float] = None
+        self.compiled_max_width: Optional[float] = None
+        self.compiled_min_height: Optional[float] = None
+        self.compiled_max_height: Optional[float] = None
+        
+        # Compiled font size (absolute pixels) - set by UICompiler
+        self.compiled_font_size = float(font_size) if isinstance(font_size, (int, float)) else 16.0
         
         # Properties
         self.anchor = anchor

@@ -276,13 +276,56 @@ Compilation happens automatically!
 
 ## 💡 **FUTURE ENHANCEMENTS (Optional)**
 
-The system is complete and production-ready. Optional enhancements:
+The system is complete and production-ready. Optional enhancements are planned in detail in `FUTURE_ENHANCEMENTS_PLAN.md`.
 
-- [ ] Min/max sizes (`min_width`, `max_width`)
-- [ ] Calc function (`calc(vw(50), px(-20))`)
-- [ ] Aspect ratio (`aspect_ratio=16/9`)
-- [ ] Flexbox/Grid layouts
-- [ ] Rem/Em units
+### **Quick Overview:**
+
+#### **PHASE 1: Quick Wins (4.5 hours) - Priority: HIGH**
+- [ ] **Min/Max Sizes** (2h) - Constraint responsive elements
+  - [ ] Add min_width, max_width, min_height, max_height to UIComponent
+  - [ ] Update UICompiler to apply clamping
+  - [ ] Write tests for all unit types
+  - [ ] Update documentation with examples
+  
+- [ ] **Aspect Ratio** (2.5h) - Maintain proportions
+  - [ ] Add aspect_ratio parameter to UIComponent
+  - [ ] Update UICompiler to calculate width/height
+  - [ ] Write tests for common ratios (16:9, 4:3, 1:1)
+  - [ ] Document common use cases
+
+#### **PHASE 2: Advanced Units (8 hours) - Priority: MEDIUM**
+- [ ] **Calc Function** (4h) - CSS-like arithmetic
+  - [ ] Create UICalc class (store operation + operands)
+  - [ ] Implement calc() function (add, sub, mul, div)
+  - [ ] Update UICompiler to compile calc expressions
+  - [ ] Test nested calc and mixed units
+  - [ ] Document calc patterns
+  
+- [ ] **Rem/Em Units** (4h) - Typography-relative sizing
+  - [ ] Add REM and EM to UnitType enum
+  - [ ] Add root_font_size to UICompiler
+  - [ ] Implement rem() and em() helper functions
+  - [ ] Update UICompiler for font-relative calculations
+  - [ ] Test with nested elements
+
+#### **PHASE 3: Layout System (12 hours) - Priority: LOW**
+- [ ] **FlexContainer** (6h) - Automatic horizontal/vertical layout
+  - [ ] Create FlexContainer class
+  - [ ] Implement flexbox layout algorithm
+  - [ ] Support direction, justify, align properties
+  - [ ] Test all layout combinations
+  - [ ] Create visual examples
+  
+- [ ] **GridContainer** (6h) - Automatic grid layout
+  - [ ] Create GridContainer class
+  - [ ] Implement grid layout algorithm
+  - [ ] Support columns, rows, gap properties
+  - [ ] Test grid positioning and spanning
+  - [ ] Create gallery examples
+
+### **Total Estimate: ~24.5 hours**
+
+**📖 See `FUTURE_ENHANCEMENTS_PLAN.md` for detailed breakdown with tasks, use cases, and implementation guides.**
 
 ---
 

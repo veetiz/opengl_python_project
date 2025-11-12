@@ -13,7 +13,8 @@ from .ui_element import UIElement, Anchor
 from .ui_manager import UIManager
 
 # UI System - CSS-like sizing
-from .ui_units import UISize, UnitType, px, percent, vw, vh
+from .ui_units import UISize, UnitType, px, percent, vw, vh, rem, em
+from .ui_calc import UICalc, calc, add, sub, mul, div
 from .ui_compiler import UICompiler
 from .ui_component import UIComponent
 
@@ -54,6 +55,14 @@ __all__ = [
     'percent',
     'vw',
     'vh',
+    'rem',
+    'em',
+    'UICalc',
+    'calc',
+    'add',
+    'sub',
+    'mul',
+    'div',
     'UICompiler',
     'UIComponent',
     
