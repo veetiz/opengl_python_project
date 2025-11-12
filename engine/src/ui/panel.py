@@ -1,5 +1,5 @@
 """
-Modern Panel Component
+UI Panel Component
 OpenGL-based panel container with customizable styling.
 """
 
@@ -8,8 +8,8 @@ from .ui_style import PanelStyle
 from typing import Optional
 
 
-class ModernPanel(UIElement):
-    """Modern panel container with OpenGL rendering."""
+class UIPanel(UIElement):
+    """UI panel container with OpenGL rendering."""
     
     def __init__(
         self,

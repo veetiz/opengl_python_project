@@ -298,17 +298,17 @@ def main():
     # Create splash scene with reference to main scene for transition
     splash_scene, splash_font_script = create_splash_scene(app, main_scene)
     
-    # Create modern settings menu scene (accessible with P)
-    from game.scenes.modern_settings_menu import ModernSettingsMenuScene
+    # Create settings menu scene (accessible with P)
+    from game.scenes.settings_menu import SettingsMenuScene
     from engine.src.ui import DefaultTheme
     
-    settings_menu_scene = ModernSettingsMenuScene(
-        name="Modern Settings Menu",
+    settings_menu_scene = SettingsMenuScene(
+        name="Settings Menu",
         app=app,
         return_scene=main_scene,
-        theme=DefaultTheme()  # Use default modern theme
+        theme=DefaultTheme()  # Use default theme
     )
-    print(f"[OK] Modern settings menu scene created (Press P to open)")
+    print(f"[OK] Settings menu scene created (Press P to open)")
     
     # Store scene references in app for F1 toggle
     app._settings_menu_scene = settings_menu_scene

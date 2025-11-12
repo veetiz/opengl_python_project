@@ -128,11 +128,11 @@ class Application:
             print("ERROR: Failed to initialize TextRenderer")
             return False
         
-        # Initialize Modern UI Renderer
-        from ..ui.modern_ui_renderer import ModernUIRenderer
-        self.ui_renderer = ModernUIRenderer()
+        # Initialize UI Renderer
+        from ..ui.ui_renderer import UIRenderer
+        self.ui_renderer = UIRenderer()
         if not self.ui_renderer.init(self.width, self.height):
-            print("ERROR: Failed to initialize ModernUIRenderer")
+            print("ERROR: Failed to initialize UIRenderer")
             return False
         
         # Initialize Text3D Renderer

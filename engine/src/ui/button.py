@@ -1,5 +1,5 @@
 """
-Modern Button Component
+UI Button Component
 OpenGL-based button with smooth graphics and customizable styling.
 """
 
@@ -8,8 +8,8 @@ from .ui_style import ButtonStyle, Colors
 from typing import Optional, Callable
 
 
-class ModernButton(UIElement):
-    """Modern button with OpenGL rendering."""
+class UIButton(UIElement):
+    """UI button with OpenGL rendering."""
     
     def __init__(
         self,

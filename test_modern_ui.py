@@ -1,18 +1,18 @@
 """
-Test Modern UI System
+Test UI System
 Quick test to verify OpenGL-based UI components work.
 """
 
 import sys
 from engine.src import Application
-from game.scenes.modern_settings_menu import ModernSettingsMenuScene
+from game.scenes.settings_menu import SettingsMenuScene
 from engine.src.ui import DefaultTheme, DarkTheme, GameCustomTheme
 
 
-def test_modern_ui():
-    """Test modern UI components."""
+def test_ui_system():
+    """Test UI components."""
     print("=" * 70)
-    print(" TESTING MODERN UI SYSTEM")
+    print(" TESTING UI SYSTEM")
     print("=" * 70)
     print()
     
@@ -43,9 +43,9 @@ def test_modern_ui():
         theme = DefaultTheme()
         print("[OK] Using DefaultTheme")
     
-    # Create modern settings menu
-    settings_menu = ModernSettingsMenuScene(
-        name="Modern Settings Test",
+    # Create settings menu
+    settings_menu = SettingsMenuScene(
+        name="Settings Test",
         app=app,
         return_scene=None,
         theme=theme
@@ -62,7 +62,7 @@ def test_modern_ui():
     print("=" * 70)
     print()
     
-    print("[OK] Starting modern UI test...")
+    print("[OK] Starting UI test...")
     print()
     
     # Run
@@ -70,5 +70,5 @@ def test_modern_ui():
 
 
 if __name__ == "__main__":
-    sys.exit(test_modern_ui())
+    sys.exit(test_ui_system())
 

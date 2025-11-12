@@ -1,5 +1,5 @@
 """
-Modern Label Component
+UI Label Component
 Text label with customizable styling.
 """
 
@@ -8,8 +8,8 @@ from .ui_style import LabelStyle
 from typing import Optional
 
 
-class ModernLabel(UIElement):
-    """Modern text label."""
+class UILabel(UIElement):
+    """UI text label."""
     
     def __init__(
         self,

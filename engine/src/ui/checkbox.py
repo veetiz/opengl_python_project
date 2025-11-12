@@ -1,5 +1,5 @@
 """
-Modern Checkbox Component
+UI Checkbox Component
 OpenGL-based checkbox with smooth graphics and customizable styling.
 """
 
@@ -8,8 +8,8 @@ from .ui_style import CheckboxStyle
 from typing import Optional, Callable
 
 
-class ModernCheckbox(UIElement):
-    """Modern checkbox with OpenGL rendering."""
+class UICheckbox(UIElement):
+    """UI checkbox with OpenGL rendering."""
     
     def __init__(
         self,

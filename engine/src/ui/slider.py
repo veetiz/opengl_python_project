@@ -1,5 +1,5 @@
 """
-Modern Slider Component
+UI Slider Component
 OpenGL-based slider with smooth graphics and customizable styling.
 """
 
@@ -8,8 +8,8 @@ from .ui_style import SliderStyle
 from typing import Optional, Callable
 
 
-class ModernSlider(UIElement):
-    """Modern slider with OpenGL rendering."""
+class UISlider(UIElement):
+    """UI slider with OpenGL rendering."""
     
     def __init__(
         self,

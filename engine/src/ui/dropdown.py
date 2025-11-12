@@ -1,5 +1,5 @@
 """
-Modern Dropdown Component
+UI Dropdown Component
 OpenGL-based dropdown with smooth graphics and customizable styling.
 """
 
@@ -8,8 +8,8 @@ from .ui_style import DropdownStyle
 from typing import List, Optional, Callable
 
 
-class ModernDropdown(UIElement):
-    """Modern dropdown selector with OpenGL rendering."""
+class UIDropdown(UIElement):
+    """UI dropdown selector with OpenGL rendering."""
     
     def __init__(
         self,

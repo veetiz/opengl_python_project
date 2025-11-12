@@ -5,12 +5,11 @@ Game-specific settings menu using modern OpenGL UI components.
 
 from engine.src import Scene, SettingsManager, SettingsPresets
 from engine.src.ui import (
-    UIManager, ModernPanel, ModernButton, ModernLabel, ModernSlider,
-    ModernCheckbox, ModernDropdown, Anchor, DefaultTheme
+    UIManager, UIPanel, UIButton, UILabel, UISlider,
+    UICheckbox, UIDropdown, Anchor, DefaultTheme
 )
 
-
-class ModernSettingsMenuScene(Scene):
+class SettingsMenuScene(Scene):
     """
     Modern settings menu with OpenGL-based UI components.
     Uses theme system for customizable appearance.
@@ -52,7 +51,7 @@ class ModernSettingsMenuScene(Scene):
         if self._initialized:
             return
         
-        print("[ModernSettingsMenu] Initializing modern UI...")
+        print("[SettingsMenu] Initializing modern UI...")
         
         self.ui_manager = UIManager(window_width, window_height)
         
@@ -62,7 +61,7 @@ class ModernSettingsMenuScene(Scene):
         panel_x = (window_width - panel_width) / 2
         panel_y = (window_height - panel_height) / 2
         
-        main_panel = ModernPanel(
+        main_panel = UIPanel(
             x=panel_x,
             y=panel_y,
             width=panel_width,
@@ -72,7 +71,7 @@ class ModernSettingsMenuScene(Scene):
         self.ui_manager.add_element(main_panel)
         
         # Title
-        title = ModernLabel(
+        title = UILabel(
             x=20,
             y=10,
             text="SETTINGS",
@@ -84,7 +83,7 @@ class ModernSettingsMenuScene(Scene):
         
         # === GRAPHICS SECTION ===
         
-        graphics_header = ModernLabel(
+        graphics_header = UILabel(
             x=20,
             y=50,
             text="GRAPHICS",
@@ -97,7 +96,7 @@ class ModernSettingsMenuScene(Scene):
         # Graphics preset buttons
         presets = ["Low", "Medium", "High", "Ultra"]
         for i, preset in enumerate(presets):
-            btn = ModernButton(
+            btn = UIButton(
                 x=20 + i * 135,
                 y=80,
                 width=125,
@@ -112,7 +111,7 @@ class ModernSettingsMenuScene(Scene):
         shadow_current = self.app.settings.get('graphics.shadow_map_size') if self.app else 2048
         shadow_value = {512: 0.0, 1024: 0.33, 2048: 0.66, 4096: 1.0}.get(shadow_current, 0.66)
         
-        shadow_slider = ModernSlider(
+        shadow_slider = UISlider(
             x=20,
             y=145,  # Lower to give space for label
             width=480,
@@ -127,7 +126,7 @@ class ModernSettingsMenuScene(Scene):
         main_panel.add_child(shadow_slider)
         
         # MSAA Dropdown (with label, more spacing from slider)
-        msaa_label = ModernLabel(
+        msaa_label = UILabel(
             x=20,
             y=195,
             text="MSAA:",
@@ -141,7 +140,7 @@ class ModernSettingsMenuScene(Scene):
         msaa_map = {0: 0, 2: 1, 4: 2, 8: 3}
         msaa_index = msaa_map.get(msaa_current, 2)
         
-        msaa_dropdown = ModernDropdown(
+        msaa_dropdown = UIDropdown(
             x=100,
             y=190,
             width=150,
@@ -155,7 +154,7 @@ class ModernSettingsMenuScene(Scene):
         
         # VSync Checkbox (with more spacing)
         vsync_current = self.app.settings.get('window.vsync') if self.app else True
-        vsync_checkbox = ModernCheckbox(
+        vsync_checkbox = UICheckbox(
             x=20,
             y=240,
             label="VSync",
@@ -167,7 +166,7 @@ class ModernSettingsMenuScene(Scene):
         
         # Fullscreen Checkbox
         fullscreen_current = self.app.settings.get('window.fullscreen') if self.app else False
-        fullscreen_checkbox = ModernCheckbox(
+        fullscreen_checkbox = UICheckbox(
             x=200,
             y=240,
             label="Fullscreen",
@@ -179,7 +178,7 @@ class ModernSettingsMenuScene(Scene):
         
         # === AUDIO SECTION ===
         
-        audio_header = ModernLabel(
+        audio_header = UILabel(
             x=20,
             y=290,
             text="AUDIO",
@@ -192,7 +191,7 @@ class ModernSettingsMenuScene(Scene):
         # Master Volume Slider
         master_vol_current = self.app.settings.get('audio.master_volume') if self.app else 0.8
         
-        master_vol_slider = ModernSlider(
+        master_vol_slider = UISlider(
             x=20,
             y=335,  # More space for label
             width=480,
@@ -209,7 +208,7 @@ class ModernSettingsMenuScene(Scene):
         # Music Volume Slider
         music_vol_current = self.app.settings.get('audio.music_volume') if self.app else 0.6
         
-        music_vol_slider = ModernSlider(
+        music_vol_slider = UISlider(
             x=20,
             y=390,  # Proper spacing
             width=480,
@@ -226,7 +225,7 @@ class ModernSettingsMenuScene(Scene):
         # === ACTION BUTTONS ===
         
         # Apply Button
-        apply_btn = ModernButton(
+        apply_btn = UIButton(
             x=20,
             y=440,
             width=120,
@@ -238,7 +237,7 @@ class ModernSettingsMenuScene(Scene):
         main_panel.add_child(apply_btn)
         
         # Reset Button
-        reset_btn = ModernButton(
+        reset_btn = UIButton(
             x=160,
             y=440,
             width=120,
@@ -250,7 +249,7 @@ class ModernSettingsMenuScene(Scene):
         main_panel.add_child(reset_btn)
         
         # Back Button
-        back_btn = ModernButton(
+        back_btn = UIButton(
             x=300,
             y=440,
             width=120,
@@ -262,13 +261,13 @@ class ModernSettingsMenuScene(Scene):
         main_panel.add_child(back_btn)
         
         self._initialized = True
-        print("[ModernSettingsMenu] Modern UI initialized")
+        print("[SettingsMenu] Modern UI initialized")
     
     # === Callbacks ===
     
     def _on_preset_click(self, preset: str):
         """Handle graphics preset click."""
-        print(f"[ModernSettingsMenu] Applying {preset} preset...")
+        print(f"[SettingsMenu] Applying {preset} preset...")
         if self.app and self.app.settings:
             SettingsPresets.apply_graphics_preset(self.app.settings, preset)
     
@@ -318,7 +317,7 @@ class ModernSettingsMenuScene(Scene):
     
     def _on_apply(self):
         """Handle Apply button click."""
-        print("\n[ModernSettingsMenu] Applying settings...")
+        print("\n[SettingsMenu] Applying settings...")
         if self.app:
             if self.app.renderer:
                 self.app.renderer.apply_settings()
@@ -328,19 +327,19 @@ class ModernSettingsMenuScene(Scene):
                 delattr(self, '_ui_font')
             
             self.app.settings.save()
-            print("[ModernSettingsMenu] Settings applied and saved!")
+            print("[SettingsMenu] Settings applied and saved!")
     
     def _on_reset(self):
         """Handle Reset button click."""
-        print("\n[ModernSettingsMenu] Resetting to defaults...")
+        print("\n[SettingsMenu] Resetting to defaults...")
         if self.app and self.app.settings:
             self.app.settings.reset_to_defaults('graphics')
             self.app.settings.reset_to_defaults('audio')
-            print("[ModernSettingsMenu] Settings reset!")
+            print("[SettingsMenu] Settings reset!")
     
     def _on_back(self):
         """Handle Back button click."""
-        print("[ModernSettingsMenu] Returning to game...")
+        print("[SettingsMenu] Returning to game...")
         if self.app and self.return_scene:
             self.app.renderer.set_scene(self.return_scene)
     
@@ -385,7 +384,7 @@ class ModernSettingsMenuScene(Scene):
             if not hasattr(self, '_ui_font'):
                 from engine.src import FontLoader
                 self._ui_font = FontLoader.load("C:/Windows/Fonts/arial.ttf", 24)
-                print(f"[ModernSettingsMenu] UI font loaded")
+                print(f"[SettingsMenu] UI font loaded")
             
             # Save OpenGL state before UI rendering
             from OpenGL.GL import (glIsEnabled, glEnable, glDisable, GL_BLEND, 

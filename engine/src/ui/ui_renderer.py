@@ -1,5 +1,5 @@
 """
-Modern UI Renderer
+UI Renderer
 OpenGL-based rendering for UI components (rectangles, circles, gradients).
 """
 
@@ -9,7 +9,7 @@ from OpenGL.GL import shaders
 from typing import Tuple
 
 
-class ModernUIRenderer:
+class UIRenderer:
     """
     Renders UI primitives using OpenGL.
     Replaces ASCII character-based rendering with proper shapes.
@@ -54,11 +54,11 @@ class ModernUIRenderer:
             self.set_projection(width, height)
             
             self.initialized = True
-            print("[ModernUIRenderer] Initialized successfully")
+            print("[UIRenderer] Initialized successfully")
             return True
             
         except Exception as e:
-            print(f"[ModernUIRenderer] ERROR: Initialization failed: {e}")
+            print(f"[UIRenderer] ERROR: Initialization failed: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -105,7 +105,7 @@ class ModernUIRenderer:
         self.size_loc = glGetUniformLocation(self.shader_program, "size")
         self.color_loc = glGetUniformLocation(self.shader_program, "color")
         
-        print("[ModernUIRenderer] Shaders compiled successfully")
+        print("[UIRenderer] Shaders compiled successfully")
     
     def _create_buffers(self):
         """Create vertex array and buffer objects."""
@@ -179,11 +179,11 @@ class ModernUIRenderer:
         
         # Verify shader and VAO are still valid
         if not glIsProgram(self.shader_program):
-            print("[ModernUIRenderer] ERROR: Shader program invalid! Reinitializing...")
+            print("[UIRenderer] ERROR: Shader program invalid! Reinitializing...")
             self._create_shaders()
         
         if not glIsVertexArray(self.vao):
-            print("[ModernUIRenderer] ERROR: VAO invalid! Reinitializing...")
+            print("[UIRenderer] ERROR: VAO invalid! Reinitializing...")
             self._create_buffers()
         
         # Use shader
@@ -301,5 +301,5 @@ class ModernUIRenderer:
         if self.shader_program:
             glDeleteProgram(self.shader_program)
         
-        print("[ModernUIRenderer] Cleaned up")
+        print("[UIRenderer] Cleaned up")
 
