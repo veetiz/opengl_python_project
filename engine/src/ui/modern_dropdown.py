@@ -35,7 +35,9 @@ class ModernDropdown(UIElement):
             on_select: Selection callback (receives index and text)
             style: Dropdown style (uses default if None)
         """
-        super().__init__(x, y, width, height, anchor)
+        # Start at layer 200 (above normal elements)
+        # Will move to layer 300 when open
+        super().__init__(x, y, width, height, anchor, layer=200)
         
         self.options = options or ["Option 1", "Option 2"]
         self.selected_index = max(0, min(len(self.options) - 1, selected_index))
@@ -58,6 +60,12 @@ class ModernDropdown(UIElement):
     def _handle_toggle(self):
         """Toggle dropdown open/closed."""
         self.is_open = not self.is_open
+        
+        # Change layer when opening/closing
+        if self.is_open:
+            self.layer = 300  # Move to overlay layer (on top of everything!)
+        else:
+            self.layer = 200  # Return to normal layer
     
     def select(self, index: int):
         """
@@ -174,24 +182,24 @@ class ModernDropdown(UIElement):
                 color=self.style.text_color.to_rgb()
             )
         
-        # Draw dropdown menu if open (render on top with solid background)
+        # Draw dropdown menu if open (layer system ensures it renders on top)
         if self.is_open:
             dropdown_y = y + self.height
-            
-            # Draw full dropdown background first (covers elements below)
             total_height = len(self.options) * self.style.item_height
+            
+            # Main dropdown background (solid, covers elements below due to layer!)
             ui_renderer.draw_rect(
                 x, dropdown_y,
                 self.width, total_height,
-                (0.15, 0.15, 0.15, 1.0)  # Solid dark background
+                (0.2, 0.2, 0.2, 1.0)  # Solid dark gray
             )
             
-            # Draw dropdown border
+            # Dropdown border
             ui_renderer.draw_border_rect(
                 x, dropdown_y,
                 self.width, total_height,
                 2.0,
-                self.style.border_color.to_tuple()
+                (0.6, 0.6, 0.6, 1.0)  # Gray border
             )
             
             # Draw each option

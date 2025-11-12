@@ -127,25 +127,18 @@ class UIManager:
     
     def render(self, text_renderer):
         """
-        Render all UI elements.
+        Render all UI elements in layer order (back to front).
         
         Args:
             text_renderer: TextRenderer instance for drawing
         """
-        # Render in two passes for proper z-ordering
-        # Pass 1: Render everything except open dropdowns
-        for element in self.elements:
-            if element.visible:
-                # Skip open dropdowns in first pass
-                if hasattr(element, 'is_open') and element.is_open:
-                    continue
-                element.render(text_renderer)
+        # Sort elements by layer (lower layers first, higher layers on top)
+        sorted_elements = sorted(self.elements, key=lambda e: e.layer)
         
-        # Pass 2: Render open dropdowns last (on top)
-        for element in self.elements:
+        # Render in layer order
+        for element in sorted_elements:
             if element.visible:
-                if hasattr(element, 'is_open') and element.is_open:
-                    element.render(text_renderer)
+                element.render(text_renderer)
     
     def set_window_size(self, width: int, height: int):
         """

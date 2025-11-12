@@ -27,6 +27,7 @@ from .ui_style import (
     CheckboxStyle, PanelStyle, LabelStyle, DropdownStyle
 )
 from .ui_theme import UITheme, DefaultTheme, DarkTheme, LightTheme, GameCustomTheme
+from .ui_layers import UILayers, get_dynamic_layer
 from .modern_button import ModernButton
 from .modern_slider import ModernSlider
 from .modern_checkbox import ModernCheckbox
@@ -73,6 +74,8 @@ __all__ = [
     'DarkTheme',
     'LightTheme',
     'GameCustomTheme',
+    'UILayers',
+    'get_dynamic_layer',
     'ModernButton',
     'ModernSlider',
     'ModernCheckbox',

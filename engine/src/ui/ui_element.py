@@ -34,7 +34,8 @@ class UIElement:
         height: float = 50.0,
         anchor: Anchor = Anchor.TOP_LEFT,
         visible: bool = True,
-        enabled: bool = True
+        enabled: bool = True,
+        layer: int = 0
     ):
         """
         Initialize UI element.
@@ -47,6 +48,7 @@ class UIElement:
             anchor: Anchor point for positioning
             visible: Whether element is visible
             enabled: Whether element is enabled (can receive input)
+            layer: Render layer (higher layers render on top, default: 0)
         """
         self.x = x
         self.y = y
@@ -55,6 +57,7 @@ class UIElement:
         self.anchor = anchor
         self.visible = visible
         self.enabled = enabled
+        self.layer = layer  # Z-index for rendering order
         
         # State
         self.is_hovered = False

@@ -402,33 +402,33 @@ class ModernSettingsMenuScene(Scene):
             # Attach font to text_renderer for labels
             text_renderer.font = self._ui_font
             
-            # Render all UI elements with both renderers
-            # Pass 1: Render all elements except open dropdowns
-            for element in self.ui_manager.elements:
-                if element.visible:
-                    # Check if it's a dropdown that needs to render children
-                    skip_for_z_order = False
-                    for child in element.children if hasattr(element, 'children') else []:
-                        if hasattr(child, 'is_open') and child.is_open:
-                            skip_for_z_order = True
-                            break
-                    
-                    if not skip_for_z_order:
-                        element.render(self.app.ui_renderer, text_renderer)
+            # Render all UI elements in layer order
+            # Collect all renderable elements (including children recursively)
+            all_elements = []
             
-            # Pass 2: Render panels with open dropdowns (on top)
+            def collect_elements(elem):
+                """Recursively collect all elements for layer-based rendering."""
+                all_elements.append(elem)
+                if hasattr(elem, 'children'):
+                    for child in elem.children:
+                        collect_elements(child)
+            
+            # Collect all elements from panels
             for element in self.ui_manager.elements:
+                collect_elements(element)
+            
+            # Sort by layer (lower layers first, higher layers on top)
+            sorted_elements = sorted(all_elements, key=lambda e: e.layer if hasattr(e, 'layer') else 0)
+            
+            # Render in layer order (each element rendered independently)
+            for element in sorted_elements:
                 if element.visible:
-                    # Check if any child dropdown is open
-                    has_open_dropdown = False
-                    for child in element.children if hasattr(element, 'children') else []:
-                        if hasattr(child, 'is_open') and child.is_open:
-                            has_open_dropdown = True
-                            break
+                    # Don't render if parent is invisible
+                    parent = element.parent if hasattr(element, 'parent') else None
+                    if parent and not parent.visible:
+                        continue
                     
-                    if has_open_dropdown:
-                        # Re-render the panel and its open dropdown on top
-                        element.render(self.app.ui_renderer, text_renderer)
+                    element.render(self.app.ui_renderer, text_renderer)
             
             # Clean up font
             if hasattr(text_renderer, 'font'):
