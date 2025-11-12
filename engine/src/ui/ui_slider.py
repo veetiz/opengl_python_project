@@ -170,15 +170,16 @@ class UISlider(UIElement):
     
     def _draw_track(self, text_renderer, x, y):
         """Draw slider track."""
-        # Simple representation with text
+        # Simple representation with text - using visible ASCII characters
         if text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
-            track = "─" * int(self.width / 8)
+            # Use underscore for better visibility
+            track = "_" * int(self.width / 10)
             text_renderer.render_text(
                 text_renderer.font,
                 track,
                 int(x),
-                int(y + self.height / 2),
-                scale=0.5,
+                int(y + 5),
+                scale=0.8,
                 color=self.track_color
             )
     
@@ -188,13 +189,14 @@ class UISlider(UIElement):
         fill_width = self.width * percentage
         
         if text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
-            fill = "━" * int(fill_width / 8)
+            # Use equals sign for better visibility
+            fill = "=" * max(1, int(fill_width / 10))
             text_renderer.render_text(
                 text_renderer.font,
                 fill,
                 int(x),
-                int(y + self.height / 2),
-                scale=0.5,
+                int(y + 5),
+                scale=0.8,
                 color=self.fill_color
             )
     
@@ -204,12 +206,13 @@ class UISlider(UIElement):
         handle_x = x + (self.width - self.handle_width) * percentage
         
         if text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
+            # Use 'O' for better visibility (guaranteed in Arial)
             text_renderer.render_text(
                 text_renderer.font,
-                "●",
+                "[O]",
                 int(handle_x),
-                int(y + self.height / 2 - 8),
-                scale=1.0,
+                int(y),
+                scale=0.8,
                 color=self.handle_color
             )
 

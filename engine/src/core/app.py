@@ -65,6 +65,9 @@ class Application:
         self.renderer: OpenGLRenderer = None
         self.input: Input = None
         self.text_renderer: TextRenderer = None
+        self.text3d_renderer = None
+        self.audio_manager = None
+        self.ui_renderer = None  # ModernUIRenderer for OpenGL-based UI
         
         # State
         self.is_running = False
@@ -107,6 +110,7 @@ class Application:
         self.window.set_resize_callback(self._on_framebuffer_resize)
         self.window.set_mouse_callback(self._on_mouse_move)
         self.window.set_scroll_callback(self._on_mouse_scroll)
+        self.window.set_mouse_button_callback(self._on_mouse_button)
         
         # Create and initialize renderer (pass settings)
         self.renderer = OpenGLRenderer(
@@ -122,6 +126,13 @@ class Application:
         self.text_renderer = TextRenderer()
         if not self.text_renderer.init(self.width, self.height):
             print("ERROR: Failed to initialize TextRenderer")
+            return False
+        
+        # Initialize Modern UI Renderer
+        from ..ui.modern_ui_renderer import ModernUIRenderer
+        self.ui_renderer = ModernUIRenderer()
+        if not self.ui_renderer.init(self.width, self.height):
+            print("ERROR: Failed to initialize ModernUIRenderer")
             return False
         
         # Initialize Text3D Renderer
@@ -314,16 +325,34 @@ class Application:
             self.renderer.on_resize(width, height)
         if self.text_renderer:
             self.text_renderer.set_projection(width, height)
+        if self.ui_renderer:
+            self.ui_renderer.set_projection(width, height)
     
     def _on_mouse_move(self, xpos: float, ypos: float):
         """Handle mouse movement."""
         if self.input:
             self.input.update_mouse_position(xpos, ypos)
+        
+        # Forward to current scene
+        if self.renderer and self.renderer.scene:
+            if hasattr(self.renderer.scene, 'on_mouse_move'):
+                self.renderer.scene.on_mouse_move(xpos, ypos)
     
     def _on_mouse_scroll(self, xoffset: float, yoffset: float):
         """Handle mouse scroll."""
         if self.input:
             self.input.update_scroll(xoffset, yoffset)
+    
+    def _on_mouse_button(self, button: int, action: int, mods: int, xpos: float, ypos: float):
+        """Handle mouse button events."""
+        # Forward to current scene
+        if self.renderer and self.renderer.scene:
+            if action == glfw.PRESS:
+                if hasattr(self.renderer.scene, 'on_mouse_click'):
+                    self.renderer.scene.on_mouse_click(xpos, ypos, button)
+            elif action == glfw.RELEASE:
+                if hasattr(self.renderer.scene, 'on_mouse_release'):
+                    self.renderer.scene.on_mouse_release(xpos, ypos, button)
     
     def run(self, scene: Scene = None) -> int:
         """
@@ -381,6 +410,7 @@ class Application:
         last_time = time.time()
         tab_pressed = False
         c_pressed = False
+        p_pressed = False
         
         try:
             while self.is_running and not self.window.should_close():
@@ -425,6 +455,25 @@ class Application:
                             cam_name = active_cam.name if active_cam else "Unknown"
                             print(f"Switched to camera {next_index}: '{cam_name}'")
                 c_pressed = c_current
+                
+                # Toggle settings menu with P key
+                p_current = self.input.keyboard.is_key_pressed(glfw.KEY_P)
+                if p_current and not p_pressed:
+                    if hasattr(self, '_settings_menu_scene') and hasattr(self, '_main_scene'):
+                        current_scene = self.renderer.scene if self.renderer else None
+                        if current_scene == self._settings_menu_scene:
+                            # Return to main scene
+                            print("Closing settings menu...")
+                            self.renderer.set_scene(self._main_scene)
+                        else:
+                            # Open settings menu
+                            print("Opening settings menu...")
+                            # Initialize UI if not already done
+                            if not self._settings_menu_scene._initialized:
+                                self._settings_menu_scene.initialize_ui(self.width, self.height)
+                                self._settings_menu_scene._initialized = True
+                            self.renderer.set_scene(self._settings_menu_scene)
+                p_pressed = p_current
                 
                 # === UPDATE SCRIPTS ===
                 # Pass input reference to all scripts and update them
@@ -534,6 +583,9 @@ class Application:
         
         if self.text3d_renderer:
             self.text3d_renderer.cleanup()
+        
+        if self.ui_renderer:
+            self.ui_renderer.cleanup()
         
         if self.audio_manager:
             self.audio_manager.cleanup()

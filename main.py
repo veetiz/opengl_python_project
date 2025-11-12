@@ -298,6 +298,22 @@ def main():
     # Create splash scene with reference to main scene for transition
     splash_scene, splash_font_script = create_splash_scene(app, main_scene)
     
+    # Create modern settings menu scene (accessible with P)
+    from game.scenes.modern_settings_menu import ModernSettingsMenuScene
+    from engine.src.ui import DefaultTheme
+    
+    settings_menu_scene = ModernSettingsMenuScene(
+        name="Modern Settings Menu",
+        app=app,
+        return_scene=main_scene,
+        theme=DefaultTheme()  # Use default modern theme
+    )
+    print(f"[OK] Modern settings menu scene created (Press P to open)")
+    
+    # Store scene references in app for F1 toggle
+    app._settings_menu_scene = settings_menu_scene
+    app._main_scene = main_scene
+    
     # Set up UI text callback
     def render_ui_callback(text_renderer):
         """Render UI text based on current scene."""
@@ -314,11 +330,16 @@ def main():
             # Render control instructions
             text_renderer.render_text(
                 main_text_script.font,
-                "WASD: Move | Arrows: Rotate | TAB: Mouse | C: Camera | ESC: Exit",
+                "WASD: Move | Arrows: Rotate | TAB: Mouse | C: Camera | P: Settings | ESC: Exit",
                 10, 10,
                 scale=0.7,
                 color=(0.8, 0.8, 0.8)
             )
+        
+        # Settings menu rendering
+        elif current_scene == settings_menu_scene:
+            # Settings menu has its own render_ui method
+            pass
     
     app.set_ui_text_callback(render_ui_callback)
     

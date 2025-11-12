@@ -77,7 +77,7 @@ class UIManager:
         for element in self.elements:
             element.handle_mouse_move(x, y)
     
-    def on_mouse_click(self, x: float, y: float, button: int):
+    def on_mouse_click(self, x: float, y: float, button: int) -> bool:
         """
         Handle mouse click.
         
@@ -85,6 +85,9 @@ class UIManager:
             x: Mouse X position
             y: Mouse Y position
             button: Mouse button (0=left, 1=right, 2=middle)
+            
+        Returns:
+            True if event was handled
         """
         self.mouse_pressed = True
         
@@ -92,7 +95,9 @@ class UIManager:
         for element in reversed(self.elements):
             if element.handle_mouse_click(x, y, button):
                 # Element consumed the click
-                break
+                return True
+        
+        return False
     
     def on_mouse_release(self, x: float, y: float, button: int):
         """
@@ -127,9 +132,20 @@ class UIManager:
         Args:
             text_renderer: TextRenderer instance for drawing
         """
+        # Render in two passes for proper z-ordering
+        # Pass 1: Render everything except open dropdowns
         for element in self.elements:
             if element.visible:
+                # Skip open dropdowns in first pass
+                if hasattr(element, 'is_open') and element.is_open:
+                    continue
                 element.render(text_renderer)
+        
+        # Pass 2: Render open dropdowns last (on top)
+        for element in self.elements:
+            if element.visible:
+                if hasattr(element, 'is_open') and element.is_open:
+                    element.render(text_renderer)
     
     def set_window_size(self, width: int, height: int):
         """

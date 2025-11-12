@@ -26,6 +26,7 @@ class Window:
         self._resize_callback: Optional[Callable] = None
         self._mouse_callback: Optional[Callable] = None
         self._scroll_callback: Optional[Callable] = None
+        self._mouse_button_callback: Optional[Callable] = None
         self.mouse_captured = False
         
     def init(self) -> bool:
@@ -64,6 +65,7 @@ class Window:
         glfw.set_framebuffer_size_callback(self.window, Window._framebuffer_resize_callback)
         glfw.set_cursor_pos_callback(self.window, Window._mouse_callback_internal)
         glfw.set_scroll_callback(self.window, Window._scroll_callback_internal)
+        glfw.set_mouse_button_callback(self.window, Window._mouse_button_callback_internal)
         
         print(f"[OK] Window created: {self.width}x{self.height}")
         return True
@@ -79,7 +81,9 @@ class Window:
     def _mouse_callback_internal(window, xpos: float, ypos: float):
         """Internal callback for mouse movement."""
         window_obj = glfw.get_window_user_pointer(window)
-        if window_obj and window_obj._mouse_callback and window_obj.mouse_captured:
+        if window_obj and window_obj._mouse_callback:
+            # Always send mouse move events (not just when captured)
+            # This is needed for UI interaction (sliders, hover, etc.)
             window_obj._mouse_callback(xpos, ypos)
     
     @staticmethod
@@ -88,6 +92,15 @@ class Window:
         window_obj = glfw.get_window_user_pointer(window)
         if window_obj and window_obj._scroll_callback:
             window_obj._scroll_callback(xoffset, yoffset)
+    
+    @staticmethod
+    def _mouse_button_callback_internal(window, button: int, action: int, mods: int):
+        """Internal callback for mouse button events."""
+        window_obj = glfw.get_window_user_pointer(window)
+        if window_obj and window_obj._mouse_button_callback:
+            # Get current mouse position
+            xpos, ypos = glfw.get_cursor_pos(window)
+            window_obj._mouse_button_callback(button, action, mods, xpos, ypos)
     
     def set_resize_callback(self, callback: Callable[[int, int], None]):
         """
@@ -115,6 +128,15 @@ class Window:
             callback: Function that takes (xoffset, yoffset) as parameters
         """
         self._scroll_callback = callback
+    
+    def set_mouse_button_callback(self, callback: Callable[[int, int, int, float, float], None]):
+        """
+        Set a callback for mouse button events.
+        
+        Args:
+            callback: Function that takes (button, action, mods, xpos, ypos) as parameters
+        """
+        self._mouse_button_callback = callback
     
     def capture_mouse(self, capture: bool = True):
         """

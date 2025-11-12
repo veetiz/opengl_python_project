@@ -959,6 +959,28 @@ class OpenGLRenderer:
             shadow_size = self.settings.get('graphics.shadow_map_size', 2048)
             if self.scene and self.shadows_enabled:
                 self._recreate_shadow_maps(shadow_size)
+            
+            # CRITICAL: Restore OpenGL state for 2D rendering
+            # Shadow map creation changes framebuffer bindings and other state
+            from OpenGL.GL import (glBindFramebuffer, glViewport, GL_FRAMEBUFFER,
+                                  glEnable, glDisable, GL_BLEND, GL_DEPTH_TEST,
+                                  glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            
+            # Restore framebuffer to screen
+            glBindFramebuffer(GL_FRAMEBUFFER, 0)
+            
+            # Restore viewport
+            if hasattr(self, 'width') and hasattr(self, 'height'):
+                glViewport(0, 0, self.width, self.height)
+            
+            # Ensure blending is enabled for 2D/UI (required for text transparency)
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            
+            # Ensure depth test is enabled for 3D
+            glEnable(GL_DEPTH_TEST)
+            
+            print("[Renderer] OpenGL state fully restored for rendering")
         else:
             print("[Renderer] No settings to apply")
     

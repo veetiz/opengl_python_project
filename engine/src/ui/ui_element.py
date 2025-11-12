@@ -201,7 +201,9 @@ class UIElement:
             self.is_pressed = True
             if self.on_click and button == 0:  # Left click
                 self.on_click()
-            return True
+                return True  # Only return True if we have a click handler
+            # If no click handler, we're just a container (like Panel)
+            # Don't consume the event
         
         return False
     

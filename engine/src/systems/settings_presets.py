@@ -23,7 +23,7 @@ class SettingsPresets:
             "bloom_intensity": 0.0,
             "render_distance": 500.0,
             "lod_bias": 2.0,
-            "culling_enabled": True
+            "culling_enabled": False
         },
         
         "medium": {
@@ -38,7 +38,7 @@ class SettingsPresets:
             "bloom_intensity": 0.2,
             "render_distance": 750.0,
             "lod_bias": 1.5,
-            "culling_enabled": True
+            "culling_enabled": False
         },
         
         "high": {
@@ -53,7 +53,7 @@ class SettingsPresets:
             "bloom_intensity": 0.3,
             "render_distance": 1000.0,
             "lod_bias": 1.0,
-            "culling_enabled": True
+            "culling_enabled": False
         },
         
         "ultra": {
@@ -68,7 +68,7 @@ class SettingsPresets:
             "bloom_intensity": 0.4,
             "render_distance": 1500.0,
             "lod_bias": 0.5,
-            "culling_enabled": True
+            "culling_enabled": False  # Disabled - model has incorrect winding order
         },
         
         "custom": {}  # User-defined preset

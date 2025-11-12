@@ -369,6 +369,10 @@ class SettingsMenuScene(Scene):
             if self.app.renderer:
                 self.app.renderer.apply_settings()
             
+            # Force UI font reload (in case OpenGL state was corrupted)
+            if hasattr(self, '_ui_font'):
+                delattr(self, '_ui_font')
+            
             # Save settings
             self.app.settings.save()
             
@@ -411,8 +415,10 @@ class SettingsMenuScene(Scene):
     
     def on_mouse_click(self, x: float, y: float, button: int):
         """Handle mouse click."""
+        print(f"[SettingsMenu] Mouse click at ({x}, {y})")
         if self.ui_manager:
-            self.ui_manager.on_mouse_click(x, y, button)
+            result = self.ui_manager.on_mouse_click(x, y, button)
+            print(f"[SettingsMenu] UIManager handled: {result}")
     
     def on_mouse_release(self, x: float, y: float, button: int):
         """Handle mouse release."""
@@ -434,5 +440,16 @@ class SettingsMenuScene(Scene):
             self.initialize_ui(width, height)
         
         if self.ui_manager:
+            # Load font for UI if not already loaded
+            if not hasattr(self, '_ui_font'):
+                from engine.src import FontLoader
+                self._ui_font = FontLoader.load("C:/Windows/Fonts/arial.ttf", 24)
+                print(f"[SettingsMenu] UI font loaded")
+            
+            # Temporarily attach font to text_renderer for UI widgets
+            text_renderer.font = self._ui_font
             self.ui_manager.render(text_renderer)
+            # Clean up
+            if hasattr(text_renderer, 'font'):
+                delattr(text_renderer, 'font')
 
