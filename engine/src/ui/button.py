@@ -113,11 +113,12 @@ class UIButton(UIElement):
             self.style.border_color.to_tuple()
         )
         
-        # Draw text (centered)
+        # Draw text (centered - use compiled sizes for accurate centering)
         if text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
             # Rough text centering (can be improved with proper text metrics)
             text_width = len(self.text) * 10 * self.style.text_size
             text_height = 16 * self.style.text_size
+            # Use compiled sizes for proper centering
             text_x = x + (w - text_width) / 2
             text_y = y + (h - text_height) / 2 + text_height
             

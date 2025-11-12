@@ -41,6 +41,7 @@ class SettingsMenuScene(Scene):
         self.ui_manager: UIManager = None
         
         self._initialized = False
+        self._debug_buttons_once = False
     
     def initialize_ui(self, window_width: int, window_height: int):
         """
@@ -94,28 +95,19 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(graphics_header)
         
-        # Graphics preset buttons (using FlexContainer for automatic spacing)
-        button_row = FlexContainer(
-            x=px(20),
-            y=px(80),
-            width=calc(percent(100), px(-40)),  # Full width - padding
-            height=px(35),
-            direction="row",
-            justify="space-between"  # Even distribution
-        )
-        
+        # Graphics preset buttons (simple positioning - FlexContainer has positioning bugs)
         presets = ["Low", "Medium", "High", "Ultra"]
-        for preset in presets:
+        for i, preset in enumerate(presets):
             btn = UIButton(
+                x=px(20 + i * 135),  # Evenly spaced: 20, 155, 290, 425
+                y=px(80),
                 width=px(125),
                 height=px(35),
                 text=preset,
                 on_click=lambda p=preset.lower(): self._on_preset_click(p),
                 style=self.theme.button
             )
-            button_row.add_child(btn)
-        
-        main_panel.add_child(button_row)
+            main_panel.add_child(btn)
         
         # Shadow Quality Slider (responsive width)
         shadow_current = self.app.settings.get('graphics.shadow_map_size') if self.app else 2048
@@ -136,25 +128,15 @@ class SettingsMenuScene(Scene):
         main_panel.add_child(shadow_slider)
         
         # MSAA Dropdown (with label, using FlexContainer)
-        msaa_row = FlexContainer(
-            x=px(20),
-            y=px(190),
-            width=calc(percent(100), px(-40)),
-            height=px(35),
-            direction="row",
-            align="center",
-            gap=px(10)
-        )
-        
+        # MSAA (simple positioning - FlexContainer has bugs)
         msaa_label = UILabel(
-            x=px(0),
-            y=px(5),
-            width=px(80),
+            x=px(20),
+            y=px(195),
             text="MSAA:",
             size=0.9,
             style=self.theme.label
         )
-        msaa_row.add_child(msaa_label)
+        main_panel.add_child(msaa_label)
         
         msaa_current = self.app.settings.get('graphics.msaa_samples') if self.app else 4
         msaa_options = ["Off", "2x", "4x", "8x"]
@@ -162,8 +144,8 @@ class SettingsMenuScene(Scene):
         msaa_index = msaa_map.get(msaa_current, 2)
         
         msaa_dropdown = UIDropdown(
-            x=px(0),
-            y=px(0),
+            x=px(100),
+            y=px(190),
             width=px(150),
             height=px(30),
             options=msaa_options,
@@ -171,9 +153,7 @@ class SettingsMenuScene(Scene):
             on_select=self._on_msaa_change,
             style=self.theme.dropdown
         )
-        msaa_row.add_child(msaa_dropdown)
-        
-        main_panel.add_child(msaa_row)
+        main_panel.add_child(msaa_dropdown)
         
         # Checkboxes (not using FlexContainer - using simple positioning)
         # VSync Checkbox
@@ -246,49 +226,43 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(music_vol_slider)
         
-        # === ACTION BUTTONS (using FlexContainer for automatic spacing) ===
-        
-        button_bar = FlexContainer(
-            x=px(20),
-            y=px(440),
-            width=calc(percent(100), px(-40)),  # Full width - padding
-            height=px(40),
-            direction="row",
-            justify="flex-start",
-            gap=px(20)  # 20px gap between buttons
-        )
+        # === ACTION BUTTONS ===
         
         # Apply Button
         apply_btn = UIButton(
+            x=px(20),
+            y=px(440),
             width=px(120),
             height=px(40),
             text="APPLY",
             on_click=self._on_apply,
             style=self.theme.button
         )
-        button_bar.add_child(apply_btn)
+        main_panel.add_child(apply_btn)
         
         # Reset Button
         reset_btn = UIButton(
+            x=px(160),
+            y=px(440),
             width=px(120),
             height=px(40),
             text="RESET",
             on_click=self._on_reset,
             style=self.theme.button
         )
-        button_bar.add_child(reset_btn)
+        main_panel.add_child(reset_btn)
         
         # Back Button
         back_btn = UIButton(
+            x=px(300),
+            y=px(440),
             width=px(120),
             height=px(40),
             text="BACK",
             on_click=self._on_back,
             style=self.theme.button
         )
-        button_bar.add_child(back_btn)
-        
-        main_panel.add_child(button_bar)
+        main_panel.add_child(back_btn)
         
         self._initialized = True
         print("[SettingsMenu] Modern UI initialized with CSS-like sizing")
@@ -418,13 +392,15 @@ class SettingsMenuScene(Scene):
             
             # Save OpenGL state before UI rendering
             from OpenGL.GL import (glIsEnabled, glEnable, glDisable, GL_BLEND, 
-                                  GL_DEPTH_TEST, glBlendFunc, GL_SRC_ALPHA, 
-                                  GL_ONE_MINUS_SRC_ALPHA)
+                                  GL_DEPTH_TEST, GL_CULL_FACE, glBlendFunc, 
+                                  GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
             
             depth_was_enabled = glIsEnabled(GL_DEPTH_TEST)
+            cull_was_enabled = glIsEnabled(GL_CULL_FACE)
             
             # Set up for 2D UI rendering
             glDisable(GL_DEPTH_TEST)
+            glDisable(GL_CULL_FACE)  # CRITICAL: UI should never be culled
             glEnable(GL_BLEND)
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
             
@@ -470,4 +446,6 @@ class SettingsMenuScene(Scene):
             # Restore OpenGL state
             if depth_was_enabled:
                 glEnable(GL_DEPTH_TEST)
+            if cull_was_enabled:
+                glEnable(GL_CULL_FACE)
 

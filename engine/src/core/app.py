@@ -549,6 +549,11 @@ class Application:
         if self.text_renderer and self.renderer and self.renderer.scene:
             scene = self.renderer.scene
             
+            # CRITICAL: Disable culling before UI rendering
+            # 3D rendering may have enabled it, but UI should never be culled
+            from OpenGL.GL import glDisable, GL_CULL_FACE
+            glDisable(GL_CULL_FACE)
+            
             # Check if scene has a render_ui method (new UI system)
             if hasattr(scene, 'render_ui'):
                 scene.render_ui(self.text_renderer)

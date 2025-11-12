@@ -964,7 +964,8 @@ class OpenGLRenderer:
             # Shadow map creation changes framebuffer bindings and other state
             from OpenGL.GL import (glBindFramebuffer, glViewport, GL_FRAMEBUFFER,
                                   glEnable, glDisable, GL_BLEND, GL_DEPTH_TEST,
-                                  glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                                  glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                                  GL_CULL_FACE)
             
             # Restore framebuffer to screen
             glBindFramebuffer(GL_FRAMEBUFFER, 0)
@@ -980,7 +981,11 @@ class OpenGLRenderer:
             # Ensure depth test is enabled for 3D
             glEnable(GL_DEPTH_TEST)
             
-            print("[Renderer] OpenGL state fully restored for rendering")
+            # CRITICAL: Disable face culling for 2D UI rendering
+            # UI elements should always be visible regardless of culling settings
+            glDisable(GL_CULL_FACE)
+            
+            print("[Renderer] OpenGL state fully restored for rendering (culling disabled for UI)")
         else:
             print("[Renderer] No settings to apply")
     

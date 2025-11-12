@@ -1,0 +1,190 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.13.9)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+======================================================================
+ OpenGL Game Engine - Python
+======================================================================
+
+[OK] Loaded user settings from config\game_engine_settings.json
+[Threading] Pools initialized
+[Threading] Manager initialized: 4 workers, enabled=True
+[AssetLoader] Initialized (cache=True, async=True)
+[Application] Using settings from: config\game_engine_settings.json
+[Application] Multithreading: True (4 workers)
+
+======================================================================
+Creating main scene...
+======================================================================
+[OK] Camera 'FrontCamera' added to scene (index 0) with CameraMovementScript
+[OK] Camera 'TopCamera' added to scene (index 1)
+[OK] Active camera: 0
+
+Adding lights to scene...
+[OK] Directional light 'Sun' added with shadows
+[OK] Point light 'LightBulb' added
+[OK] Spot light 'Flashlight' added with shadows
+
+Creating textured quad (texture will load after OpenGL init)...
+[OK] Textured quad created with RotateScript
+
+Adding 3D text to scene...
+[OK] 3D text 'WoodLabel' added at position (np.float32(0.0), np.float32(1.5), np.float32(0.0))
+[OK] 3D text 'WorldText' added at position (np.float32(0.0), np.float32(-1.8), np.float32(0.0))
+[TextUIScript] Attached (will load font on start)
+
+[OK] Main scene created with:
+  - 1 object(s)
+  - 2 camera(s)
+  - 3 light(s)
+  - 2 3D text(s)
+  - 0 audio source(s)
+
+======================================================================
+Creating splash scene...
+======================================================================
+[SplashScene] Using window dimensions: 800x600
+[SplashTransitionScript] Will transition after 3.0 seconds
+[TextUIScript] Attached (will load font on start)
+[OK] Splash scene created
+[OK] Settings menu scene created (Press P to open)
+
+======================================================================
+ Ready to start!
+======================================================================
+
+============================================================
+Initializing OpenGL Application
+============================================================
+[OK] Window created: 800x600
+[OK] VSync enabled
+[Renderer] Initialized with settings: True
+[OK] OpenGL Version: 3.3.0 - Build 32.0.101.6790
+[OK] GLSL Version: 3.30 - Build 32.0.101.6790
+[OK] Renderer: Intel(R) Iris(R) Xe Graphics
+[Renderer] Applying graphics settings...
+  [OK] MSAA enabled (8x)
+  [OK] Anisotropic filtering: 16x (applied to textures)
+  [OK] Shadows enabled
+  [OK] Bloom enabled (intensity: 0.4)
+  [OK] Render distance: 1500.0
+  [OK] Face culling disabled
+  [OK] Gamma: 2.2
+[Renderer] Graphics settings applied
+[DEBUG] Vertex shader compiled
+[DEBUG] Fragment shader compiled
+[OK] Shaders compiled and linked successfully
+[OK] Shadow depth shader compiled
+[OK] OpenGL renderer initialized
+[OK] TextRenderer initialized
+[UIRenderer] Shaders compiled successfully
+[UIRenderer] Initialized successfully
+[OK] 3D text shaders compiled
+[OK] Text3DRenderer initialized
+[AUDIO] Audio system initialized: 44100Hz, 2 channels, 32 max sounds
+[OK] Audio master volume set to 0.3145833333333333
+[AUDIO] Listener set: AudioListener(camera='None', pos=(np.float32(0.0), np.float32(0.0), np.float32(0.0)))
+============================================================
+Initialization complete!
+============================================================
+[Application] Settings callbacks registered (live updates enabled)
+
+[TEXTURE LOADING] Loading deferred textures...
+[TEXTURE LOADING] Texture loading complete
+
+
+[APP] Starting scene scripts before main loop...
+[SplashTransitionScript] Splash started at 1762968088.4400678
+[TextUIScript] Loading font: C:/Windows/Fonts/arial.ttf (size 48)
+Loading font: C:/Windows/Fonts/arial.ttf (size 48)
+[OK] Loaded font 'arial.ttf' with 95 glyphs
+[TextUIScript] Font loaded successfully
+[TextUIScript] Applying font to SplashScene
+
+Entering main loop...
+Controls:
+  - WASD: Move camera (forward/back/left/right)
+  - Q/E: Move camera (down/up)
+  - Arrow Keys: Rotate camera
+  - TAB: Toggle mouse capture for rotation
+  - Mouse Scroll: Zoom in/out
+  - C: Switch to next camera
+  - ESC: Exit application
+------------------------------------------------------------
+[INFO] Frames: 120, FPS: 112.2
+
+[SplashTransitionScript] Transitioning to main scene...
+[OK] Shadow map created: 2D 4096x4096
+[OK] Shadow map created for light 'Sun' (4096x4096)
+[OK] Shadow map created: 2D 4096x4096
+[OK] Shadow map created for light 'Flashlight' (4096x4096)
+
+[TEXTURE LOADING] Loading deferred textures...
+[TEXTURE LOADING] Loading diffuse texture for 'WoodQuad': assets/textures/Substance_graph_basecolor.png
+[OK] Texture loaded: assets/textures/Substance_graph_basecolor.png (2048x2048, 4 channels)
+[TEXTURE LOADING] [OK] Loaded: ID=97, Size=2048x2048
+[TEXTURE LOADING] Applied texture to 1 mesh(es)
+[TEXTURE LOADING] Loading normal map for 'WoodQuad': assets/textures/Substance_graph_normal.png
+[OK] Texture loaded: assets/textures/Substance_graph_normal.png (2048x2048, 4 channels)
+[TEXTURE LOADING] [OK] Loaded normal map: ID=98
+[TEXTURE LOADING] Applied normal map to material
+[TEXTURE LOADING] Loading roughness map for 'WoodQuad': assets/textures/Substance_graph_roughness.png
+[OK] Texture loaded: assets/textures/Substance_graph_roughness.png (2048x2048, 3 channels)
+[TEXTURE LOADING] [OK] Loaded roughness map: ID=99
+[TEXTURE LOADING] Applied roughness map to material
+[TEXTURE LOADING] Loading AO map for 'WoodQuad': assets/textures/Substance_graph_ambientocclusion.png
+[OK] Texture loaded: assets/textures/Substance_graph_ambientocclusion.png (2048x2048, 3 channels)
+[TEXTURE LOADING] [OK] Loaded AO map: ID=100
+[TEXTURE LOADING] Applied AO map to material
+[TEXTURE LOADING] Texture loading complete
+
+[TextUIScript] Loading font: C:/Windows/Fonts/arial.ttf (size 24)
+Loading font: C:/Windows/Fonts/arial.ttf (size 24)
+[OK] Loaded font 'arial.ttf' with 95 glyphs
+[TextUIScript] Font loaded successfully
+[TextUIScript] Applied font to 3D text 'WoodLabel'
+[TextUIScript] Applied font to 3D text 'WorldText'
+[FPSCounterScript] Started (global scene script)
+[CameraMovementScript] Attached to camera 'FrontCamera'
+[RotateScript] Attached to 'WoodQuad' - rotation started
+Opening settings menu...
+[SettingsMenu] Initializing modern UI with CSS-like sizing...
+[UIManager] Initialized with CSS-like sizing support
+[DEBUG] Button bar has 3 children
+  Apply: APPLY
+  Reset: RESET
+  Back: BACK
+[SettingsMenu] Modern UI initialized with CSS-like sizing
+Loading font: C:/Windows/Fonts/arial.ttf (size 24)
+[OK] Loaded font 'arial.ttf' with 95 glyphs
+[SettingsMenu] UI font loaded
+[DEBUG] Container at (20, 80)
+  Button 0 'Low': compiled=(0.0, 0.0), absolute=(140.0, 150.0)
+  Button 1 'Medium': compiled=(0.0, 0.0), absolute=(140.0, 150.0)
+  Button 2 'High': compiled=(0.0, 0.0), absolute=(140.0, 150.0)
+  Button 3 'Ultra': compiled=(0.0, 0.0), absolute=(140.0, 150.0)
+[DEBUG] Container at (20, 190)
+  Button 0 'MSAA:': compiled=(0, 5), absolute=(140.0, 265.0)
+[DEBUG] Container at (20, 440)
+  Button 0 'APPLY': compiled=(0.0, 0.0), absolute=(140.0, 510.0)
+  Button 1 'RESET': compiled=(0.0, 0.0), absolute=(140.0, 510.0)
+  Button 2 'BACK': compiled=(0.0, 0.0), absolute=(140.0, 510.0)
+
+Main loop exited after 224 frames
+
+============================================================
+Cleaning up application resources
+============================================================
+[AssetLoader] Cleaned up
+[Threading] Shutting down thread pools...
+[Threading] Thread pools shut down
+
+Cleaning up OpenGL resources...
+[OK] OpenGL renderer cleaned up
+[OK] TextRenderer cleaned up
+[OK] Text3DRenderer cleaned up
+[UIRenderer] Cleaned up
+[AUDIO] Audio system cleaned up
+[OK] Window cleaned up
+[OK] Settings saved to config\game_engine_settings.json
+============================================================
+Cleanup complete - goodbye!
+============================================================
