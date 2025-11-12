@@ -551,8 +551,11 @@ class Application:
             
             # CRITICAL: Disable culling before UI rendering
             # 3D rendering may have enabled it, but UI should never be culled
-            from OpenGL.GL import glDisable, GL_CULL_FACE
+            from OpenGL.GL import glDisable, glIsEnabled, GL_CULL_FACE
+            cull_state_before = glIsEnabled(GL_CULL_FACE)
             glDisable(GL_CULL_FACE)
+            if cull_state_before:
+                print(f"[DEBUG] Culling was ENABLED before UI render - now DISABLED")
             
             # Check if scene has a render_ui method (new UI system)
             if hasattr(scene, 'render_ui'):
