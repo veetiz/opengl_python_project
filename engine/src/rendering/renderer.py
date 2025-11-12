@@ -82,6 +82,11 @@ class OpenGLRenderer:
         try:
             self.window = window
             
+            # Store window dimensions for viewport management
+            self.width = window.width
+            self.height = window.height
+            print(f"[Renderer] Initialized with viewport: {self.width}x{self.height}")
+            
             # Print OpenGL info
             print(f"[OK] OpenGL Version: {glGetString(GL_VERSION).decode()}")
             print(f"[OK] GLSL Version: {glGetString(GL_SHADING_LANGUAGE_VERSION).decode()}")
@@ -775,6 +780,17 @@ class OpenGLRenderer:
             return
         
         try:
+            # CRITICAL: Set viewport to current dimensions at start of frame
+            # This ensures shadow pass saves/restores correct dimensions
+            if hasattr(self, 'width') and hasattr(self, 'height'):
+                glViewport(0, 0, self.width, self.height)
+                # DEBUG: Check current viewport before rendering
+                current_viewport = glGetIntegerv(GL_VIEWPORT)
+                if hasattr(self, '_last_viewport'):
+                    if tuple(current_viewport) != self._last_viewport:
+                        print(f"[DEBUG] Viewport set to: {tuple(current_viewport)}")
+                self._last_viewport = tuple(current_viewport)
+            
             # Render shadow maps first
             self._render_shadow_pass()
             
@@ -865,7 +881,13 @@ class OpenGLRenderer:
     
     def on_resize(self, width: int, height: int):
         """Handle window resize."""
+        print(f"[Renderer] on_resize called: {width}x{height}")
         glViewport(0, 0, width, height)
+        print(f"[Renderer] glViewport set to: 0, 0, {width}, {height}")
+        
+        # Update window dimensions
+        self.width = width
+        self.height = height
         
         # Update all cameras in the scene
         if self.scene:
@@ -972,7 +994,10 @@ class OpenGLRenderer:
             
             # Restore viewport
             if hasattr(self, 'width') and hasattr(self, 'height'):
+                print(f"[DEBUG] apply_settings restoring viewport to: {self.width}x{self.height}")
                 glViewport(0, 0, self.width, self.height)
+            else:
+                print(f"[WARNING] Renderer has no width/height! Cannot restore viewport!")
             
             # Ensure blending is enabled for 2D/UI (required for text transparency)
             glEnable(GL_BLEND)

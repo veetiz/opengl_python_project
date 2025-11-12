@@ -47,12 +47,19 @@ class Window:
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)  # For macOS compatibility
         glfw.window_hint(glfw.RESIZABLE, glfw.TRUE)
         
-        # Create window
+        # Create window (initially windowed)
         self.window = glfw.create_window(self.width, self.height, self.title, None, None)
         if not self.window:
             print("ERROR: Failed to create GLFW window")
             glfw.terminate()
             return False
+        
+        # Store initial windowed size for fullscreen toggle
+        self._windowed_width = self.width
+        self._windowed_height = self.height
+        self._windowed_xpos = 100
+        self._windowed_ypos = 100
+        self.is_fullscreen = False
         
         # Make the OpenGL context current
         glfw.make_context_current(self.window)
@@ -183,6 +190,73 @@ class Window:
     def swap_buffers(self):
         """Swap the front and back buffers (present the rendered frame)."""
         glfw.swap_buffers(self.window)
+    
+    def set_fullscreen(self, fullscreen: bool):
+        """
+        Toggle fullscreen mode.
+        
+        Args:
+            fullscreen: True for fullscreen, False for windowed
+        """
+        if not self.window:
+            return
+        
+        if fullscreen and not self.is_fullscreen:
+            # Save current windowed position and size
+            self._windowed_xpos, self._windowed_ypos = glfw.get_window_pos(self.window)
+            self._windowed_width, self._windowed_height = glfw.get_window_size(self.window)
+            
+            # Get primary monitor and its video mode
+            monitor = glfw.get_primary_monitor()
+            mode = glfw.get_video_mode(monitor)
+            
+            # Set to fullscreen
+            glfw.set_window_monitor(
+                self.window,
+                monitor,
+                0, 0,
+                mode.size.width,
+                mode.size.height,
+                mode.refresh_rate
+            )
+            
+            self.is_fullscreen = True
+            self.width = mode.size.width
+            self.height = mode.size.height
+            print(f"[Window] Switched to fullscreen: {mode.size.width}x{mode.size.height}")
+            
+            # Force GLFW to process the monitor change
+            glfw.poll_events()
+            
+            # Trigger framebuffer resize callback to update viewport
+            print(f"[Window] Triggering resize callback: {mode.size.width}x{mode.size.height}")
+            if self._resize_callback:
+                self._resize_callback(mode.size.width, mode.size.height)
+            
+        elif not fullscreen and self.is_fullscreen:
+            # Restore windowed mode
+            glfw.set_window_monitor(
+                self.window,
+                None,
+                self._windowed_xpos,
+                self._windowed_ypos,
+                self._windowed_width,
+                self._windowed_height,
+                0
+            )
+            
+            self.is_fullscreen = False
+            self.width = self._windowed_width
+            self.height = self._windowed_height
+            print(f"[Window] Switched to windowed: {self._windowed_width}x{self._windowed_height}")
+            
+            # Force GLFW to process the monitor change
+            glfw.poll_events()
+            
+            # Trigger framebuffer resize callback to update viewport
+            print(f"[Window] Triggering resize callback: {self._windowed_width}x{self._windowed_height}")
+            if self._resize_callback:
+                self._resize_callback(self._windowed_width, self._windowed_height)
     
     def cleanup(self):
         """Clean up window resources."""

@@ -106,11 +106,20 @@ class Application:
         # Create input manager
         self.input = Input(self.window.window)
         
-        # Set up window callbacks
+        # Set up window callbacks FIRST (before fullscreen, so resize callback works)
         self.window.set_resize_callback(self._on_framebuffer_resize)
         self.window.set_mouse_callback(self._on_mouse_move)
         self.window.set_scroll_callback(self._on_mouse_scroll)
         self.window.set_mouse_button_callback(self._on_mouse_button)
+        
+        # Apply fullscreen setting (after callbacks are set up)
+        fullscreen = self.settings.get('window.fullscreen', False)
+        if fullscreen:
+            self.window.set_fullscreen(True)
+            # Update app dimensions from window (callback might not have been processed yet)
+            self.width = self.window.width
+            self.height = self.window.height
+            print(f"[OK] Fullscreen enabled: {self.width}x{self.height}")
         
         # Create and initialize renderer (pass settings)
         self.renderer = OpenGLRenderer(
@@ -122,16 +131,16 @@ class Application:
             print("ERROR: Failed to initialize renderer")
             return False
         
-        # Initialize Text Renderer (2D)
+        # Initialize Text Renderer (2D) - use window dimensions
         self.text_renderer = TextRenderer()
-        if not self.text_renderer.init(self.width, self.height):
+        if not self.text_renderer.init(self.window.width, self.window.height):
             print("ERROR: Failed to initialize TextRenderer")
             return False
         
-        # Initialize UI Renderer
+        # Initialize UI Renderer - use window dimensions
         from ..ui.ui_renderer import UIRenderer
         self.ui_renderer = UIRenderer()
-        if not self.ui_renderer.init(self.width, self.height):
+        if not self.ui_renderer.init(self.window.width, self.window.height):
             print("ERROR: Failed to initialize UIRenderer")
             return False
         
@@ -178,6 +187,14 @@ class Application:
             print(f"[Settings] VSync changed: {old_value} -> {new_value}")
         
         self.settings.register_callback('window.vsync', on_vsync_change)
+        
+        # Fullscreen callback
+        def on_fullscreen_change(new_value, old_value):
+            if self.window:
+                self.window.set_fullscreen(new_value)
+                print(f"[Settings] Fullscreen changed: {old_value} -> {new_value}")
+        
+        self.settings.register_callback('window.fullscreen', on_fullscreen_change)
         
         # Audio volume callback
         def on_volume_change(new_value, old_value):
