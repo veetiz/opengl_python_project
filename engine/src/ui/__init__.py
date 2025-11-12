@@ -33,6 +33,12 @@ from .panel import UIPanel
 from .label import UILabel
 from .dropdown import UIDropdown
 
+# UI System - Layout containers
+from .flex_container import (
+    FlexContainer, FlexDirection, JustifyContent, AlignItems, FlexWrap
+)
+from .grid_container import GridContainer
+
 __all__ = [
     # Text
     'TextRenderer',
@@ -89,6 +95,14 @@ __all__ = [
     'UICheckbox',
     'UIPanel',
     'UILabel',
-    'UIDropdown'
+    'UIDropdown',
+    
+    # UI System - Layout containers
+    'FlexContainer',
+    'FlexDirection',
+    'JustifyContent',
+    'AlignItems',
+    'FlexWrap',
+    'GridContainer'
 ]
 

@@ -129,13 +129,14 @@ class UIManager:
         for element in self.elements:
             element.update(delta_time)
     
-    def render(self, text_renderer):
+    def render(self, text_renderer, ui_renderer=None):
         """
         Render all UI elements in layer order (back to front).
         Compiles CSS-like sizes (%, vw, vh) before rendering.
         
         Args:
             text_renderer: TextRenderer instance for drawing
+            ui_renderer: UIRenderer instance for OpenGL components (optional, for backward compat)
         """
         # Compile sizes for all elements (%, vw, vh → px)
         for element in self.elements:
@@ -147,7 +148,11 @@ class UIManager:
         # Render in layer order
         for element in sorted_elements:
             if element.visible:
-                element.render(text_renderer)
+                # Check if element needs both renderers (modern UI)
+                if ui_renderer is not None:
+                    element.render(ui_renderer, text_renderer)
+                else:
+                    element.render(text_renderer)
     
     def _compile_element_recursive(self, element):
         """

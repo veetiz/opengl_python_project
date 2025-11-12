@@ -5,7 +5,8 @@ OpenGL-based checkbox with smooth graphics and customizable styling.
 
 from .ui_element import UIElement, Anchor
 from .ui_style import CheckboxStyle
-from typing import Optional, Callable
+from .ui_units import UISize
+from typing import Optional, Callable, Union
 
 
 class UICheckbox(UIElement):
@@ -13,32 +14,50 @@ class UICheckbox(UIElement):
     
     def __init__(
         self,
-        x: float,
-        y: float,
+        x: Union[float, UISize] = 0.0,
+        y: Union[float, UISize] = 0.0,
         label: str = "",
         checked: bool = False,
         anchor: Anchor = Anchor.TOP_LEFT,
         on_toggle: Optional[Callable[[bool], None]] = None,
-        style: Optional[CheckboxStyle] = None
+        style: Optional[CheckboxStyle] = None,
+        **kwargs
     ):
         """
-        Initialize modern checkbox.
+        Initialize modern checkbox with CSS-like sizing support.
         
         Args:
-            x, y: Position
+            x, y: Position (supports px, %, vw, vh, rem, em, calc)
             label: Label text
             checked: Initial checked state
             anchor: Anchor point
             on_toggle: Toggle callback
             style: Checkbox style (uses default if None)
+            **kwargs: Additional CSS-like parameters
         """
+        # Import here to avoid circular dependency
+        from .ui_units import px
+        from .ui_calc import UICalc
+        
         self.style = style or CheckboxStyle()
         
         # Width includes box + spacing + label
         width = self.style.box_size + 10 + len(label) * 12
         height = self.style.box_size
         
-        super().__init__(x, y, width, height, anchor)
+        # Convert to float for UIElement
+        x_val = float(x) if isinstance(x, (int, float)) else 0.0
+        y_val = float(y) if isinstance(y, (int, float)) else 0.0
+        
+        super().__init__(x_val, y_val, width, height, anchor)
+        
+        # Store CSS-like sizes
+        self.x_size = x if isinstance(x, (UISize, UICalc)) else px(x)
+        self.y_size = y if isinstance(y, (UISize, UICalc)) else px(y)
+        
+        # Compiled sizes
+        self.compiled_x = x_val
+        self.compiled_y = y_val
         
         self.label = label
         self._checked = checked

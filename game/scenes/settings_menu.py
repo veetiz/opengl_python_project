@@ -6,7 +6,8 @@ Game-specific settings menu using OpenGL UI components.
 from engine.src import Scene, SettingsManager, SettingsPresets
 from engine.src.ui import (
     UIManager, UIPanel, UIButton, UILabel, UISlider,
-    UICheckbox, UIDropdown, Anchor, DefaultTheme
+    UICheckbox, UIDropdown, Anchor, DefaultTheme,
+    FlexContainer, px, vw, vh, percent, calc
 )
 
 
@@ -52,29 +53,28 @@ class SettingsMenuScene(Scene):
         if self._initialized:
             return
         
-        print("[SettingsMenu] Initializing modern UI...")
+        print("[SettingsMenu] Initializing modern UI with CSS-like sizing...")
         
         self.ui_manager = UIManager(window_width, window_height)
         
-        # Main panel
-        panel_width = 600
-        panel_height = 500
-        panel_x = (window_width - panel_width) / 2
-        panel_y = (window_height - panel_height) / 2
-        
+        # Main panel (responsive, centered, constrained)
+        # Uses vw/vh for responsiveness, calc for centering, min/max for constraints
         main_panel = UIPanel(
-            x=panel_x,
-            y=panel_y,
-            width=panel_width,
-            height=panel_height,
+            x=calc(vw(50), px(-300)),  # Center (50% - half width)
+            y=calc(vh(50), px(-250)),  # Center (50% - half height)
+            width=px(600),
+            height=px(500),
+            min_width=px(500),   # Minimum size for readability
+            max_width=px(800),   # Maximum size for aesthetics
             style=self.theme.panel
         )
         self.ui_manager.add_element(main_panel)
         
-        # Title
+        # Title (percentage-based positioning within panel)
         title = UILabel(
-            x=20,
-            y=10,
+            x=px(20),
+            y=px(10),
+            width=calc(percent(100), px(-40)),  # Full width - 40px padding
             text="SETTINGS",
             size=1.5,
             bold=True,
@@ -85,8 +85,8 @@ class SettingsMenuScene(Scene):
         # === GRAPHICS SECTION ===
         
         graphics_header = UILabel(
-            x=20,
-            y=50,
+            x=px(20),
+            y=px(50),
             text="GRAPHICS",
             size=1.2,
             bold=True,
@@ -94,29 +94,38 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(graphics_header)
         
-        # Graphics preset buttons
+        # Graphics preset buttons (using FlexContainer for automatic spacing)
+        button_row = FlexContainer(
+            x=px(20),
+            y=px(80),
+            width=calc(percent(100), px(-40)),  # Full width - padding
+            height=px(35),
+            direction="row",
+            justify="space-between"  # Even distribution
+        )
+        
         presets = ["Low", "Medium", "High", "Ultra"]
-        for i, preset in enumerate(presets):
+        for preset in presets:
             btn = UIButton(
-                x=20 + i * 135,
-                y=80,
-                width=125,
-                height=35,
+                width=px(125),
+                height=px(35),
                 text=preset,
                 on_click=lambda p=preset.lower(): self._on_preset_click(p),
                 style=self.theme.button
             )
-            main_panel.add_child(btn)
+            button_row.add_child(btn)
         
-        # Shadow Quality Slider (with more space for label)
+        main_panel.add_child(button_row)
+        
+        # Shadow Quality Slider (responsive width)
         shadow_current = self.app.settings.get('graphics.shadow_map_size') if self.app else 2048
         shadow_value = {512: 0.0, 1024: 0.33, 2048: 0.66, 4096: 1.0}.get(shadow_current, 0.66)
         
         shadow_slider = UISlider(
-            x=20,
-            y=145,  # Lower to give space for label
-            width=480,
-            height=30,
+            x=px(20),
+            y=px(145),
+            width=calc(percent(100), px(-120)),  # Full width - margins
+            height=px(30),
             min_value=0.0,
             max_value=1.0,
             current_value=shadow_value,
@@ -126,15 +135,26 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(shadow_slider)
         
-        # MSAA Dropdown (with label, more spacing from slider)
+        # MSAA Dropdown (with label, using FlexContainer)
+        msaa_row = FlexContainer(
+            x=px(20),
+            y=px(190),
+            width=calc(percent(100), px(-40)),
+            height=px(35),
+            direction="row",
+            align="center",
+            gap=px(10)
+        )
+        
         msaa_label = UILabel(
-            x=20,
-            y=195,
+            x=px(0),
+            y=px(5),
+            width=px(80),
             text="MSAA:",
             size=0.9,
             style=self.theme.label
         )
-        main_panel.add_child(msaa_label)
+        msaa_row.add_child(msaa_label)
         
         msaa_current = self.app.settings.get('graphics.msaa_samples') if self.app else 4
         msaa_options = ["Off", "2x", "4x", "8x"]
@@ -142,22 +162,25 @@ class SettingsMenuScene(Scene):
         msaa_index = msaa_map.get(msaa_current, 2)
         
         msaa_dropdown = UIDropdown(
-            x=100,
-            y=190,
-            width=150,
-            height=30,
+            x=px(0),
+            y=px(0),
+            width=px(150),
+            height=px(30),
             options=msaa_options,
             selected_index=msaa_index,
             on_select=self._on_msaa_change,
             style=self.theme.dropdown
         )
-        main_panel.add_child(msaa_dropdown)
+        msaa_row.add_child(msaa_dropdown)
         
-        # VSync Checkbox (with more spacing)
+        main_panel.add_child(msaa_row)
+        
+        # Checkboxes (not using FlexContainer - using simple positioning)
+        # VSync Checkbox
         vsync_current = self.app.settings.get('window.vsync') if self.app else True
         vsync_checkbox = UICheckbox(
-            x=20,
-            y=240,
+            x=px(20),
+            y=px(240),
             label="VSync",
             checked=vsync_current,
             on_toggle=self._on_vsync_toggle,
@@ -168,8 +191,8 @@ class SettingsMenuScene(Scene):
         # Fullscreen Checkbox
         fullscreen_current = self.app.settings.get('window.fullscreen') if self.app else False
         fullscreen_checkbox = UICheckbox(
-            x=200,
-            y=240,
+            x=px(200),
+            y=px(240),
             label="Fullscreen",
             checked=fullscreen_current,
             on_toggle=self._on_fullscreen_toggle,
@@ -180,8 +203,8 @@ class SettingsMenuScene(Scene):
         # === AUDIO SECTION ===
         
         audio_header = UILabel(
-            x=20,
-            y=290,
+            x=px(20),
+            y=px(290),
             text="AUDIO",
             size=1.2,
             bold=True,
@@ -189,14 +212,14 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(audio_header)
         
-        # Master Volume Slider
+        # Master Volume Slider (responsive width)
         master_vol_current = self.app.settings.get('audio.master_volume') if self.app else 0.8
         
         master_vol_slider = UISlider(
-            x=20,
-            y=335,  # More space for label
-            width=480,
-            height=30,
+            x=px(20),
+            y=px(335),
+            width=calc(percent(100), px(-120)),  # Responsive width
+            height=px(30),
             min_value=0.0,
             max_value=1.0,
             current_value=master_vol_current,
@@ -206,14 +229,14 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(master_vol_slider)
         
-        # Music Volume Slider
+        # Music Volume Slider (responsive width)
         music_vol_current = self.app.settings.get('audio.music_volume') if self.app else 0.6
         
         music_vol_slider = UISlider(
-            x=20,
-            y=390,  # Proper spacing
-            width=480,
-            height=30,
+            x=px(20),
+            y=px(390),
+            width=calc(percent(100), px(-120)),  # Responsive width
+            height=px(30),
             min_value=0.0,
             max_value=1.0,
             current_value=music_vol_current,
@@ -223,46 +246,52 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(music_vol_slider)
         
-        # === ACTION BUTTONS ===
+        # === ACTION BUTTONS (using FlexContainer for automatic spacing) ===
+        
+        button_bar = FlexContainer(
+            x=px(20),
+            y=px(440),
+            width=calc(percent(100), px(-40)),  # Full width - padding
+            height=px(40),
+            direction="row",
+            justify="flex-start",
+            gap=px(20)  # 20px gap between buttons
+        )
         
         # Apply Button
         apply_btn = UIButton(
-            x=20,
-            y=440,
-            width=120,
-            height=40,
+            width=px(120),
+            height=px(40),
             text="APPLY",
             on_click=self._on_apply,
             style=self.theme.button
         )
-        main_panel.add_child(apply_btn)
+        button_bar.add_child(apply_btn)
         
         # Reset Button
         reset_btn = UIButton(
-            x=160,
-            y=440,
-            width=120,
-            height=40,
+            width=px(120),
+            height=px(40),
             text="RESET",
             on_click=self._on_reset,
             style=self.theme.button
         )
-        main_panel.add_child(reset_btn)
+        button_bar.add_child(reset_btn)
         
         # Back Button
         back_btn = UIButton(
-            x=300,
-            y=440,
-            width=120,
-            height=40,
+            width=px(120),
+            height=px(40),
             text="BACK",
             on_click=self._on_back,
             style=self.theme.button
         )
-        main_panel.add_child(back_btn)
+        button_bar.add_child(back_btn)
+        
+        main_panel.add_child(button_bar)
         
         self._initialized = True
-        print("[SettingsMenu] Modern UI initialized")
+        print("[SettingsMenu] Modern UI initialized with CSS-like sizing")
     
     # === Callbacks ===
     
@@ -401,6 +430,10 @@ class SettingsMenuScene(Scene):
             
             # Attach font to text_renderer for labels
             text_renderer.font = self._ui_font
+            
+            # COMPILE CSS-LIKE SIZES FIRST! (Critical for CSS units to work!)
+            for element in self.ui_manager.elements:
+                self.ui_manager._compile_element_recursive(element)
             
             # Render all UI elements in layer order
             # Collect all renderable elements (including children recursively)

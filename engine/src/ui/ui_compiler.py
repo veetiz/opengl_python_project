@@ -271,4 +271,35 @@ class UICompiler:
         if hasattr(component, 'children'):
             for child in component.children:
                 self.compile_component(child)
+        
+        # If this is a layout container (FlexContainer, GridContainer), perform layout
+        if hasattr(component, 'layout'):
+            # Compile gap if present (FlexContainer)
+            if hasattr(component, 'gap_size'):
+                component.compiled_gap = self.compile_size(
+                    component.gap_size,
+                    parent_width if parent_width else 0,
+                    is_width=True,
+                    parent_font_size=parent_font_size
+                )
+            
+            # Compile column/row gaps if present (GridContainer)
+            if hasattr(component, 'column_gap_size'):
+                component.compiled_column_gap = self.compile_size(
+                    component.column_gap_size,
+                    parent_width if parent_width else 0,
+                    is_width=True,
+                    parent_font_size=parent_font_size
+                )
+            
+            if hasattr(component, 'row_gap_size'):
+                component.compiled_row_gap = self.compile_size(
+                    component.row_gap_size,
+                    parent_height if parent_height else 0,
+                    is_width=False,
+                    parent_font_size=parent_font_size
+                )
+            
+            # Perform layout (positions children automatically)
+            component.layout()
 

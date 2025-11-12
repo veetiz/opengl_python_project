@@ -84,12 +84,14 @@ class UIElement:
     def get_absolute_position(self) -> Tuple[float, float]:
         """
         Get absolute screen position accounting for parent and anchor.
+        Uses compiled sizes if available (for CSS-like sizing support).
         
         Returns:
             Tuple of (x, y) in screen coordinates
         """
-        abs_x = self.x
-        abs_y = self.y
+        # Use compiled sizes if available (CSS-like sizing)
+        abs_x = self.compiled_x if hasattr(self, 'compiled_x') else self.x
+        abs_y = self.compiled_y if hasattr(self, 'compiled_y') else self.y
         
         # Add parent offset
         if self.parent:

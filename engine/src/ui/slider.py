@@ -5,7 +5,8 @@ OpenGL-based slider with smooth graphics and customizable styling.
 
 from .ui_element import UIElement, Anchor
 from .ui_style import SliderStyle
-from typing import Optional, Callable
+from .ui_units import UISize
+from typing import Optional, Callable, Union
 
 
 class UISlider(UIElement):
@@ -13,24 +14,25 @@ class UISlider(UIElement):
     
     def __init__(
         self,
-        x: float,
-        y: float,
-        width: float,
-        height: float = 30.0,
+        x: Union[float, UISize] = 0.0,
+        y: Union[float, UISize] = 0.0,
+        width: Union[float, UISize] = 200.0,
+        height: Union[float, UISize] = 30.0,
         min_value: float = 0.0,
         max_value: float = 1.0,
         current_value: float = 0.5,
         anchor: Anchor = Anchor.TOP_LEFT,
         on_value_change: Optional[Callable[[float], None]] = None,
         label: str = "",
-        style: Optional[SliderStyle] = None
+        style: Optional[SliderStyle] = None,
+        **kwargs
     ):
         """
-        Initialize modern slider.
+        Initialize modern slider with CSS-like sizing support.
         
         Args:
-            x, y: Position
-            width, height: Size
+            x, y: Position (supports px, %, vw, vh, rem, em, calc)
+            width, height: Size (supports all units)
             min_value: Minimum value
             max_value: Maximum value
             current_value: Starting value
@@ -38,8 +40,40 @@ class UISlider(UIElement):
             on_value_change: Value change callback
             label: Optional label
             style: Slider style (uses default if None)
+            **kwargs: Additional CSS-like parameters
         """
-        super().__init__(x, y, width, height, anchor)
+        # Import here to avoid circular dependency
+        from .ui_units import px
+        from .ui_calc import UICalc
+        
+        # Convert to float for UIElement
+        x_val = float(x) if isinstance(x, (int, float)) else 0.0
+        y_val = float(y) if isinstance(y, (int, float)) else 0.0
+        width_val = float(width) if isinstance(width, (int, float)) else 200.0
+        height_val = float(height) if isinstance(height, (int, float)) else 30.0
+        
+        super().__init__(x_val, y_val, width_val, height_val, anchor)
+        
+        # Store CSS-like sizes
+        self.x_size = x if isinstance(x, (UISize, UICalc)) else px(x)
+        self.y_size = y if isinstance(y, (UISize, UICalc)) else px(y)
+        self.width_size = width if isinstance(width, (UISize, UICalc)) else px(width)
+        self.height_size = height if isinstance(height, (UISize, UICalc)) else px(height)
+        
+        # Store constraints from kwargs
+        for key in ['min_width', 'max_width', 'min_height', 'max_height', 'aspect_ratio']:
+            if key in kwargs:
+                val = kwargs[key]
+                if key == 'aspect_ratio':
+                    setattr(self, key, val)
+                else:
+                    setattr(self, f'{key}_size', val if val is None or isinstance(val, (UISize, UICalc)) else px(val))
+        
+        # Compiled sizes
+        self.compiled_x = x_val
+        self.compiled_y = y_val
+        self.compiled_width = width_val
+        self.compiled_height = height_val
         
         self.min_value = min_value
         self.max_value = max_value
@@ -75,9 +109,12 @@ class UISlider(UIElement):
         """Set value based on mouse X position."""
         x, y = self.get_absolute_position()
         
+        # Use compiled width for accurate mouse tracking
+        w = self.compiled_width if hasattr(self, 'compiled_width') else self.width
+        
         # Calculate percentage
         relative_x = mouse_x - x
-        percentage = max(0.0, min(1.0, relative_x / self.width))
+        percentage = max(0.0, min(1.0, relative_x / w))
         
         # Set value
         new_value = self.min_value + percentage * (self.max_value - self.min_value)
@@ -130,21 +167,25 @@ class UISlider(UIElement):
         x, y = self.get_absolute_position()
         percentage = self.get_value_percentage()
         
+        # Use compiled sizes
+        w = self.compiled_width if hasattr(self, 'compiled_width') else self.width
+        h = self.compiled_height if hasattr(self, 'compiled_height') else self.height
+        
         # Add spacing after label
         label_offset = self.style.label_spacing if self.label else 0
         
         # Calculate track position (centered vertically, accounting for label)
-        track_y = y + label_offset + (self.height - self.style.track_height) / 2
+        track_y = y + label_offset + (h - self.style.track_height) / 2
         
         # Draw track background (FULL WIDTH - gray/empty part)
         ui_renderer.draw_rect(
             x, track_y,
-            self.width, self.style.track_height,
+            w, self.style.track_height,
             self.style.track_color.to_tuple()  # Gray for empty part
         )
         
         # Draw fill (ACTIVE PART - colored based on value)
-        fill_width = self.width * percentage
+        fill_width = w * percentage
         if fill_width > 0:
             fill_color = self.style.fill_hover_color if self.is_hovered else self.style.fill_color
             ui_renderer.draw_rect(
@@ -153,16 +194,16 @@ class UISlider(UIElement):
                 fill_color.to_tuple()  # Colored fill (green by default)
             )
         
-        # Draw track border (around full slider)
+        # Draw track border (around full slider - use compiled width!)
         ui_renderer.draw_border_rect(
             x, track_y,
-            self.width, self.style.track_height,
+            w, self.style.track_height,
             self.style.border_width,
             self.style.track_border_color.to_tuple()
         )
         
-        # Draw handle (centered on track)
-        handle_x = x + (self.width * percentage)
+        # Draw handle (centered on track, use compiled width)
+        handle_x = x + (w * percentage)
         handle_y = track_y + self.style.track_height / 2
         
         if self.is_pressed:
@@ -201,8 +242,8 @@ class UISlider(UIElement):
                 # Show percentage for volume sliders
                 value_text = f"{int(self._value * 100)}%"
             
-            # Position value text above and to the right of handle
-            handle_x = x + (self.width * percentage)
+            # Position value text above and to the right of handle (use compiled width)
+            handle_x = x + (w * percentage)
             text_renderer.render_text(
                 text_renderer.font,
                 value_text,
