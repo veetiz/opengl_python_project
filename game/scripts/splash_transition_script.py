@@ -3,7 +3,7 @@ Splash Transition Script
 Handles automatic transition from splash scene to main scene.
 """
 
-from src import GameScript
+from engine.src import GameScript
 import time
 
 

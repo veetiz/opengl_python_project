@@ -3,7 +3,7 @@ Example Game Scripts
 Demonstrates how to create and use GameScripts.
 """
 
-from src import GameScript
+from engine.src import GameScript
 import numpy as np
 
 

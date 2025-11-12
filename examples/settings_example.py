@@ -6,8 +6,8 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from src.settings_manager import SettingsManager
-from src.settings_presets import SettingsPresets
+from engine.src.systems.settings_manager import SettingsManager
+from engine.src.systems.settings_presets import SettingsPresets
 
 
 def example_basic_usage():

@@ -3,7 +3,7 @@ Camera Movement Script
 Handles camera movement and rotation based on input.
 """
 
-from src import GameScript
+from engine.src import GameScript
 import glfw
 
 

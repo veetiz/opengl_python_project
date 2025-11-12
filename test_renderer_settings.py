@@ -3,7 +3,7 @@ Test Renderer Settings Integration
 Quick test to verify renderer settings integration.
 """
 
-from src import Application, SettingsPresets
+from engine.src import Application, SettingsPresets
 
 def test_integration():
     print("\n" + "="*70)

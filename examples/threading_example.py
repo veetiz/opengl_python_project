@@ -7,8 +7,8 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from src.threading_manager import ThreadingManager, TaskPriority
-from src.asset_loader import AssetLoader
+from engine.src.systems.threading_manager import ThreadingManager, TaskPriority
+from engine.src.systems.asset_loader import AssetLoader
 import time
 import random
 

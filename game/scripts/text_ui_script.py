@@ -3,7 +3,7 @@ Text UI Script
 Renders UI text on screen using Text2D.
 """
 
-from src import GameScript, FontLoader
+from engine.src import GameScript, FontLoader
 import os
 
 

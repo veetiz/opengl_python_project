@@ -5,7 +5,7 @@ Entry point for the OpenGL application.
 
 import sys
 import time
-from src import (
+from engine.src import (
     Application, Scene, SplashScene, GameObject, Model, Camera, GameScript, 
     ModelLoader, Texture, FontLoader, DirectionalLight, PointLight, SpotLight, Material,
     Text3D, AudioClip, Audio2D, Audio3D
