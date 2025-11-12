@@ -28,6 +28,7 @@ class Scene:
         self.cameras: List['Camera'] = []
         self.lights: List['Light'] = []
         self.text3d_objects: List = []  # 3D text entities
+        self.audio_sources: List = []  # Audio sources (Audio2D and Audio3D)
         self.active_camera_index: int = 0
         self._entities: List['Entity'] = []  # All entities (unified list)
         self.scripts: List['GameScript'] = []  # Global scripts attached to the scene
@@ -222,6 +223,47 @@ class Scene:
     def text3d_count(self) -> int:
         """Get the total number of 3D text objects in the scene."""
         return len(self.text3d_objects)
+    
+    # === Audio Source Management ===
+    
+    def add_audio_source(self, audio_source):
+        """
+        Add an audio source to the scene.
+        
+        Args:
+            audio_source: AudioSource (Audio2D or Audio3D)
+        """
+        self.audio_sources.append(audio_source)
+        self._entities.append(audio_source)
+    
+    def remove_audio_source(self, audio_source):
+        """
+        Remove an audio source from the scene.
+        
+        Args:
+            audio_source: AudioSource to remove
+        """
+        if audio_source in self.audio_sources:
+            # Stop playback before removing
+            if hasattr(audio_source, 'stop'):
+                audio_source.stop()
+            self.audio_sources.remove(audio_source)
+            if audio_source in self._entities:
+                self._entities.remove(audio_source)
+    
+    def get_active_audio_sources(self) -> List:
+        """
+        Get all active audio sources in the scene.
+        
+        Returns:
+            List of active audio sources
+        """
+        return [source for source in self.audio_sources if source.active]
+    
+    @property
+    def audio_source_count(self) -> int:
+        """Get the total number of audio sources in the scene."""
+        return len(self.audio_sources)
     
     # === Entity Management (Generic) ===
     

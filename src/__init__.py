@@ -27,6 +27,16 @@ from .text3d_renderer import Text3DRenderer
 from .light import Light, DirectionalLight, PointLight, SpotLight
 from .material import Material
 from .shadow_map import ShadowMap
+from .audio_clip import AudioClip
+from .audio_listener import AudioListener
+from .audio_source import AudioSource
+from .audio2d import Audio2D
+from .audio3d import Audio3D
+from .audio_manager import AudioManager
+from .settings_manager import SettingsManager
+from .settings_presets import SettingsPresets
+from .threading_manager import ThreadingManager
+from .asset_loader import AssetLoader
 
 __all__ = [
     'Window',
@@ -60,5 +70,15 @@ __all__ = [
     'SpotLight',
     'Material',
     'ShadowMap',
+    'AudioClip',
+    'AudioListener',
+    'AudioSource',
+    'Audio2D',
+    'Audio3D',
+    'AudioManager',
+    'SettingsManager',
+    'SettingsPresets',
+    'ThreadingManager',
+    'AssetLoader',
 ]
 __version__ = '2.0.0'

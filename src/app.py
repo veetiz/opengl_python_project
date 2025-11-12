@@ -12,6 +12,11 @@ from .scene import Scene
 from .input import Input
 from .text_renderer import TextRenderer
 from .text3d_renderer import Text3DRenderer
+from .audio_manager import AudioManager
+from .audio_listener import AudioListener
+from .settings_manager import SettingsManager
+from .threading_manager import ThreadingManager
+from .asset_loader import AssetLoader
 
 
 class Application:
@@ -19,24 +24,41 @@ class Application:
     
     def __init__(
         self, 
-        width: int = 800, 
-        height: int = 600,
-        title: str = "OpenGL Application",
-        enable_validation: bool = False
+        width: int = None,  # None = use settings
+        height: int = None,  # None = use settings
+        title: str = None,  # None = use settings
+        enable_validation: bool = False,
+        app_name: str = "game_engine"
     ):
         """
         Initialize the Application.
         
         Args:
-            width: Window width in pixels
-            height: Window height in pixels
-            title: Window title
+            width: Window width (None = use settings)
+            height: Window height (None = use settings)
+            title: Window title (None = use settings)
             enable_validation: Enable OpenGL debug output
+            app_name: Application name for settings
         """
-        self.width = width
-        self.height = height
-        self.title = title
-        self.enable_validation = enable_validation
+        # Initialize settings FIRST
+        self.settings = SettingsManager(app_name=app_name)
+        
+        # Use settings if not provided
+        self.width = width or self.settings.get('window.width')
+        self.height = height or self.settings.get('window.height')
+        self.title = title or self.settings.get('window.title')
+        self.enable_validation = enable_validation or self.settings.get('engine.debug_mode')
+        
+        # Initialize threading system
+        num_workers = self.settings.get('performance.worker_threads')
+        threading_enabled = self.settings.get('performance.multithreading')
+        self.threading_manager = ThreadingManager(num_workers, threading_enabled)
+        
+        # Initialize asset loader
+        self.asset_loader = AssetLoader(
+            self.threading_manager,
+            enable_cache=True
+        )
         
         # Components
         self.window: Window = None
@@ -48,6 +70,9 @@ class Application:
         self.is_running = False
         self.framebuffer_resized = False
         self._ui_text_callback = None
+        
+        print(f"[Application] Using settings from: {self.settings.user_file}")
+        print(f"[Application] Multithreading: {threading_enabled} ({num_workers} workers)")
     
     def init(self) -> bool:
         """
@@ -66,6 +91,15 @@ class Application:
             print("ERROR: Failed to initialize window")
             return False
         
+        # Apply window settings
+        vsync = self.settings.get('window.vsync')
+        if vsync:
+            glfw.swap_interval(1)  # Enable VSync
+            print("[OK] VSync enabled")
+        else:
+            glfw.swap_interval(0)  # Disable VSync
+            print("[OK] VSync disabled")
+        
         # Create input manager
         self.input = Input(self.window.window)
         
@@ -74,10 +108,11 @@ class Application:
         self.window.set_mouse_callback(self._on_mouse_move)
         self.window.set_scroll_callback(self._on_mouse_scroll)
         
-        # Create and initialize renderer
+        # Create and initialize renderer (pass settings)
         self.renderer = OpenGLRenderer(
             app_name=self.title,
-            enable_validation=self.enable_validation
+            enable_validation=self.enable_validation,
+            settings=self.settings  # Pass settings to renderer
         )
         if not self.renderer.init(self.window):
             print("ERROR: Failed to initialize renderer")
@@ -95,12 +130,62 @@ class Application:
             print("ERROR: Failed to initialize Text3DRenderer")
             return False
         
+        # Initialize Audio Manager
+        self.audio_manager = AudioManager()
+        if not self.audio_manager.initialized:
+            print("WARNING: Failed to initialize Audio Manager - audio will be disabled")
+        else:
+            # Apply audio settings
+            self.audio_manager.set_master_volume(self.settings.get('audio.master_volume'))
+            print(f"[OK] Audio master volume set to {self.settings.get('audio.master_volume')}")
+        
+        # Create audio listener (will be attached to active camera)
+        self.audio_listener = AudioListener()
+        if self.audio_manager.initialized:
+            self.audio_manager.set_listener(self.audio_listener)
+        
         # Note: Textures will be loaded after scene is set in run()
         
         print("=" * 60)
         print("Initialization complete!")
         print("=" * 60)
+        
+        # Register settings callbacks for live updates
+        self._register_settings_callbacks()
+        
         return True
+    
+    def _register_settings_callbacks(self):
+        """Register callbacks for settings changes."""
+        if not self.settings:
+            return
+        
+        # VSync callback
+        def on_vsync_change(new_value, old_value):
+            import glfw
+            glfw.swap_interval(1 if new_value else 0)
+            print(f"[Settings] VSync changed: {old_value} -> {new_value}")
+        
+        self.settings.register_callback('window.vsync', on_vsync_change)
+        
+        # Audio volume callback
+        def on_volume_change(new_value, old_value):
+            if self.audio_manager and self.audio_manager.initialized:
+                self.audio_manager.set_master_volume(new_value)
+                print(f"[Settings] Master volume changed: {old_value} -> {new_value}")
+        
+        self.settings.register_callback('audio.master_volume', on_volume_change)
+        
+        # Shadow quality callback
+        def on_shadow_quality_change(new_value, old_value):
+            if self.renderer:
+                self.renderer.apply_settings()
+                print(f"[Settings] Shadow quality changed: {old_value} -> {new_value}")
+        
+        self.settings.register_callback('graphics.shadow_map_size', on_shadow_quality_change)
+        self.settings.register_callback('graphics.shadows_enabled', on_shadow_quality_change)
+        
+        print("[Application] Settings callbacks registered (live updates enabled)")
     
     def _load_deferred_textures(self):
         """Load textures for objects after OpenGL context is created."""
@@ -265,6 +350,13 @@ class Application:
         if scene:
             print("\n[APP] Starting scene scripts before main loop...")
             scene.update_scripts(0.0)  # Call with delta_time=0 to trigger on_start
+            
+            # Start audio sources that have play_on_start enabled
+            if self.audio_manager and self.audio_manager.initialized:
+                for audio_source in scene.audio_sources:
+                    if audio_source.play_on_start:
+                        audio_source.play()
+                        print(f"[AUDIO] Auto-playing: {audio_source.name}")
         
         self.is_running = True
         self._main_loop()
@@ -350,6 +442,16 @@ class Application:
                     
                     # Update all scripts (handles camera movement via CameraMovementScript)
                     self.renderer.scene.update_scripts(delta_time)
+                    
+                    # Update audio listener to match active camera
+                    active_camera = self.renderer.scene.get_active_camera()
+                    if active_camera and self.audio_listener:
+                        self.audio_listener.attach_to_camera(active_camera)
+                    
+                    # Update all audio sources
+                    if self.audio_manager and self.audio_manager.initialized:
+                        audio_sources = self.renderer.scene.get_active_audio_sources()
+                        self.audio_manager.update_audio_sources(audio_sources, delta_time)
                 
                 # Render frame
                 self._render_frame()
@@ -411,6 +513,14 @@ class Application:
         print("Cleaning up application resources")
         print("=" * 60)
         
+        # Clean up asset loader (wait for pending loads)
+        if hasattr(self, 'asset_loader') and self.asset_loader:
+            self.asset_loader.cleanup()
+        
+        # Clean up threading (wait for tasks)
+        if hasattr(self, 'threading_manager') and self.threading_manager:
+            self.threading_manager.shutdown(wait=True)
+        
         if self.renderer:
             self.renderer.cleanup()
         
@@ -420,8 +530,15 @@ class Application:
         if self.text3d_renderer:
             self.text3d_renderer.cleanup()
         
+        if self.audio_manager:
+            self.audio_manager.cleanup()
+        
         if self.window:
             self.window.cleanup()
+        
+        # Save settings on exit
+        if hasattr(self, 'settings') and self.settings:
+            self.settings.save()
         
         print("=" * 60)
         print("Cleanup complete - goodbye!")

@@ -8,7 +8,7 @@ import time
 from src import (
     Application, Scene, SplashScene, GameObject, Model, Camera, GameScript, 
     ModelLoader, Texture, FontLoader, DirectionalLight, PointLight, SpotLight, Material,
-    Text3D
+    Text3D, AudioClip, Audio2D, Audio3D
 )
 from game.scripts import RotateScript, FPSCounterScript, CameraMovementScript, TextUIScript, SplashTransitionScript
 
@@ -200,7 +200,44 @@ def create_main_scene():
     fps_script = FPSCounterScript(print_interval=3.0)
     scene.add_script(fps_script)
     
-    print(f"[OK] Main scene created with {scene.object_count} object(s), {scene.camera_count} camera(s), and {scene.text3d_count} 3D text(s)")
+    # === CREATE AUDIO SOURCES (EXAMPLES - COMMENTED OUT) ===
+    
+    # EXAMPLE: Background music (2D audio - plays everywhere)
+    # music_clip = AudioClip("assets/audio/background_music.mp3")
+    # background_music = Audio2D(
+    #     name="BackgroundMusic",
+    #     clip=music_clip,
+    #     volume=0.5,
+    #     loop=True,
+    #     play_on_start=True,
+    #     category="music"
+    # )
+    # scene.add_audio_source(background_music)
+    # print(f"[OK] Background music added")
+    
+    # EXAMPLE: 3D positional audio (distance-based volume)
+    # ambient_clip = AudioClip("assets/audio/ambient_sound.wav")
+    # ambient_sound = Audio3D(
+    #     name="AmbientSound",
+    #     clip=ambient_clip,
+    #     position=(2.0, 0.0, 0.0),  # Next to the wood quad
+    #     volume=0.8,
+    #     loop=True,
+    #     play_on_start=True,
+    #     min_distance=1.0,  # Full volume within 1 unit
+    #     max_distance=10.0,  # Silent beyond 10 units
+    #     rolloff_factor=1.5,  # Medium-fast falloff
+    #     category="sfx"
+    # )
+    # scene.add_audio_source(ambient_sound)
+    # print(f"[OK] 3D ambient sound added at {ambient_sound.position}")
+    
+    print(f"\n[OK] Main scene created with:")
+    print(f"  - {scene.object_count} object(s)")
+    print(f"  - {scene.camera_count} camera(s)")
+    print(f"  - {scene.light_count} light(s)")
+    print(f"  - {scene.text3d_count} 3D text(s)")
+    print(f"  - {scene.audio_source_count} audio source(s)")
     
     return scene, text_ui_script
 

@@ -77,6 +77,11 @@ class Camera(Entity):
         """
         return self._perspective(self.fov, self.aspect_ratio, self.near, self.far)
     
+    @property
+    def forward(self) -> np.ndarray:
+        """Get forward vector (alias for front)."""
+        return self.front
+    
     def move_forward(self, amount: float):
         """Move camera forward by amount."""
         self.position += self.front * amount

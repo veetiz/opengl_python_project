@@ -1,0 +1,76 @@
+{
+    "engine": {
+        "version": "1.0.0",
+        "name": "my_game",
+        "debug_mode": false,
+        "log_level": "info"
+    },
+    "window": {
+        "width": 1280,
+        "height": 720,
+        "fullscreen": false,
+        "borderless": false,
+        "resizable": true,
+        "vsync": true,
+        "title": "Engine Application"
+    },
+    "graphics": {
+        "target_fps": 60,
+        "fps_limit": true,
+        "msaa_samples": 4,
+        "anisotropic_filtering": 16,
+        "texture_quality": 1.0,
+        "shadows_enabled": true,
+        "shadow_map_size": 2048,
+        "shadow_cascades": 3,
+        "shadow_distance": 100.0,
+        "bloom": true,
+        "bloom_intensity": 0.3,
+        "tone_mapping": true,
+        "gamma": 2.2,
+        "exposure": 1.0,
+        "render_distance": 1000.0,
+        "lod_bias": 1.0,
+        "culling_enabled": true,
+        "wireframe_mode": false
+    },
+    "audio": {
+        "master_volume": 0.8,
+        "effects_volume": 0.7,
+        "music_volume": 0.6,
+        "ambient_volume": 0.5,
+        "muted": false,
+        "spatial_audio": true,
+        "doppler_effect": true,
+        "reverb": true,
+        "max_sound_sources": 32,
+        "sample_rate": 44100,
+        "bit_depth": 16
+    },
+    "input": {
+        "mouse_sensitivity": 1.0,
+        "mouse_smoothing": true,
+        "mouse_invert_y": false,
+        "mouse_invert_x": false,
+        "keyboard_repeat": true,
+        "gamepad_enabled": true,
+        "gamepad_deadzone": 0.15
+    },
+    "ui": {
+        "scale": 1.0,
+        "font_size": 16,
+        "show_fps": false,
+        "show_debug_info": false,
+        "fade_duration": 0.3,
+        "tooltip_delay": 0.5
+    },
+    "performance": {
+        "multithreading": true,
+        "worker_threads": 4,
+        "async_loading": true,
+        "texture_streaming": true,
+        "occlusion_culling": true,
+        "frustum_culling": true,
+        "memory_limit_mb": 2048
+    }
+}

@@ -13,22 +13,30 @@ from .camera import Camera
 from .scene import Scene
 from .mesh import Mesh
 from .shadow_map import ShadowMap
+from .settings_manager import SettingsManager
 import os
 
 
 class OpenGLRenderer:
     """Manages OpenGL rendering."""
     
-    def __init__(self, app_name: str = "OpenGL App", enable_validation: bool = False):
+    def __init__(
+        self, 
+        app_name: str = "OpenGL App", 
+        enable_validation: bool = False,
+        settings: Optional[SettingsManager] = None
+    ):
         """
         Initialize the OpenGL Renderer.
         
         Args:
             app_name: Application name
             enable_validation: Enable OpenGL debug output
+            settings: SettingsManager instance (optional)
         """
         self.app_name = app_name
         self.enable_validation = enable_validation
+        self.settings = settings
         
         # OpenGL resources
         self.shader_program: Optional[int] = None
@@ -52,6 +60,14 @@ class OpenGLRenderer:
         
         # Shadow maps
         self.shadow_maps: Dict[str, ShadowMap] = {}  # Maps light name to shadow map
+        
+        # Graphics settings (applied from settings if available)
+        self.shadows_enabled = True
+        self.bloom_enabled = False
+        self.msaa_enabled = False
+        self.render_distance = 1000.0
+        
+        print(f"[Renderer] Initialized with settings: {settings is not None}")
         
     def init(self, window: Window) -> bool:
         """
@@ -86,6 +102,12 @@ class OpenGLRenderer:
             # glFrontFace(GL_CCW)  # Counter-clockwise is front face
             
             glClearColor(0.0, 0.0, 0.0, 1.0)
+            
+            # Apply graphics settings from SettingsManager
+            if self.settings:
+                self._apply_graphics_settings()
+            else:
+                print("[Renderer] No settings manager provided, using defaults")
             
             # Load and compile shaders
             if not self._create_shader_program():
@@ -297,20 +319,30 @@ class OpenGLRenderer:
         if not self.scene:
             return
         
+        # Skip if shadows disabled in settings
+        if not self.shadows_enabled:
+            print("[Renderer] Shadows disabled in settings, skipping shadow map creation")
+            return
+        
+        # Get shadow resolution from settings
+        shadow_size = 2048  # Default
+        if self.settings:
+            shadow_size = self.settings.get('graphics.shadow_map_size', 2048)
+        
         for light in self.scene.get_active_lights():
             if light.cast_shadows and light.name not in self.shadow_maps:
                 light_data = light.get_light_data()
                 
                 if light_data['type'] == 'point':
                     # Cubemap shadow map for point lights
-                    shadow_map = ShadowMap(1024, 1024, is_cubemap=True)
+                    shadow_map = ShadowMap(shadow_size, shadow_size, is_cubemap=True)
                 else:
                     # 2D shadow map for directional/spot lights
-                    shadow_map = ShadowMap(2048, 2048, is_cubemap=False)
+                    shadow_map = ShadowMap(shadow_size, shadow_size, is_cubemap=False)
                 
                 self.shadow_maps[light.name] = shadow_map
                 light.shadow_map = shadow_map
-                print(f"[OK] Shadow map created for light '{light.name}'")
+                print(f"[OK] Shadow map created for light '{light.name}' ({shadow_size}x{shadow_size})")
     
     def set_scene(self, scene: Scene):
         """
@@ -839,6 +871,119 @@ class OpenGLRenderer:
         if self.scene:
             for camera in self.scene.cameras:
                 camera.set_aspect_ratio(width, height)
+    
+    def _apply_graphics_settings(self):
+        """Apply graphics settings from SettingsManager."""
+        if not self.settings:
+            return
+        
+        print("[Renderer] Applying graphics settings...")
+        
+        # === MSAA (Multisample Anti-Aliasing) ===
+        msaa_samples = self.settings.get('graphics.msaa_samples', 0)
+        if msaa_samples > 0:
+            glEnable(GL_MULTISAMPLE)
+            self.msaa_enabled = True
+            print(f"  [OK] MSAA enabled ({msaa_samples}x)")
+        else:
+            glDisable(GL_MULTISAMPLE)
+            self.msaa_enabled = False
+            print(f"  [OK] MSAA disabled")
+        
+        # === Anisotropic Filtering ===
+        aniso_filtering = self.settings.get('graphics.anisotropic_filtering', 1)
+        if aniso_filtering > 1:
+            # Note: Applied per-texture when loading
+            print(f"  [OK] Anisotropic filtering: {aniso_filtering}x (applied to textures)")
+        
+        # === Shadows ===
+        self.shadows_enabled = self.settings.get('graphics.shadows_enabled', True)
+        if self.shadows_enabled:
+            print(f"  [OK] Shadows enabled")
+        else:
+            print(f"  [OK] Shadows disabled")
+        
+        # === Bloom ===
+        self.bloom_enabled = self.settings.get('graphics.bloom', False)
+        if self.bloom_enabled:
+            bloom_intensity = self.settings.get('graphics.bloom_intensity', 0.3)
+            print(f"  [OK] Bloom enabled (intensity: {bloom_intensity})")
+        else:
+            print(f"  [OK] Bloom disabled")
+        
+        # === Render Distance ===
+        self.render_distance = self.settings.get('graphics.render_distance', 1000.0)
+        print(f"  [OK] Render distance: {self.render_distance}")
+        
+        # === Culling ===
+        culling_enabled = self.settings.get('graphics.culling_enabled', True)
+        if culling_enabled:
+            glEnable(GL_CULL_FACE)
+            glCullFace(GL_BACK)
+            glFrontFace(GL_CCW)
+            print(f"  [OK] Face culling enabled")
+        else:
+            glDisable(GL_CULL_FACE)
+            print(f"  [OK] Face culling disabled")
+        
+        # === Wireframe Mode (Debug) ===
+        wireframe = self.settings.get('graphics.wireframe_mode', False)
+        if wireframe:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            print(f"  [OK] Wireframe mode enabled")
+        else:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        
+        # === Gamma Correction ===
+        gamma = self.settings.get('graphics.gamma', 2.2)
+        # Note: Applied in fragment shader
+        print(f"  [OK] Gamma: {gamma}")
+        
+        print("[Renderer] Graphics settings applied")
+    
+    def apply_settings(self, settings: SettingsManager = None):
+        """
+        Apply or re-apply graphics settings.
+        Can be called at runtime to update settings.
+        
+        Args:
+            settings: Optional new settings manager (uses existing if None)
+        """
+        if settings:
+            self.settings = settings
+        
+        if self.settings:
+            self._apply_graphics_settings()
+            
+            # Recreate shadow maps with new resolution
+            shadow_size = self.settings.get('graphics.shadow_map_size', 2048)
+            if self.scene and self.shadows_enabled:
+                self._recreate_shadow_maps(shadow_size)
+        else:
+            print("[Renderer] No settings to apply")
+    
+    def _recreate_shadow_maps(self, shadow_size: int):
+        """Recreate shadow maps with new resolution."""
+        # Clean up existing shadow maps
+        for shadow_map in self.shadow_maps.values():
+            shadow_map.cleanup()
+        self.shadow_maps.clear()
+        
+        # Recreate with new size
+        if self.scene:
+            for light in self.scene.get_active_lights():
+                if light.cast_shadows:
+                    light_data = light.get_light_data()
+                    
+                    if light_data['type'] == 'point':
+                        shadow_map = ShadowMap(shadow_size, shadow_size, is_cubemap=True)
+                    else:
+                        shadow_map = ShadowMap(shadow_size, shadow_size, is_cubemap=False)
+                    
+                    self.shadow_maps[light.name] = shadow_map
+                    light.shadow_map = shadow_map
+            
+            print(f"[Renderer] Shadow maps recreated at {shadow_size}x{shadow_size}")
     
     def cleanup(self):
         """Clean up OpenGL resources."""

@@ -1,0 +1,6 @@
+# Ignore user settings files (keep defaults)
+*_settings.json
+
+# Keep default settings
+!default_settings.json
+
