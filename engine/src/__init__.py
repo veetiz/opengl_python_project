@@ -25,7 +25,9 @@ from .audio import (
 # UI
 from .ui import (
     TextRenderer, Text2D, Text3DRenderer, Text3D,
-    Font, Glyph, FontLoader
+    Font, Glyph, FontLoader,
+    UIElement, Anchor, UIManager, UIButton, UILabel,
+    UISlider, UICheckbox, UIDropdown, UIPanel
 )
 
 # Scene
@@ -81,6 +83,15 @@ __all__ = [
     'Font',
     'Glyph',
     'FontLoader',
+    'UIElement',
+    'Anchor',
+    'UIManager',
+    'UIButton',
+    'UILabel',
+    'UISlider',
+    'UICheckbox',
+    'UIDropdown',
+    'UIPanel',
     
     # Scene
     'Scene',

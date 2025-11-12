@@ -192,7 +192,7 @@ class Application:
         if not self.renderer or not self.renderer.scene:
             return
         
-        from src import Texture
+        from ..graphics.texture import Texture
         print("\n[TEXTURE LOADING] Loading deferred textures...")
         
         for game_object in self.renderer.scene.game_objects:
@@ -491,17 +491,22 @@ class Application:
                     projection_matrix
                 )
         
+        # Render additional UI text overlays after 3D rendering
+        # IMPORTANT: Call callback FIRST to set fonts before rendering!
+        if self.text_renderer and hasattr(self, '_ui_text_callback') and self._ui_text_callback:
+            self._ui_text_callback(self.text_renderer)
+        
         # Render 2D text entities from scene (if any)
         if self.text_renderer and self.renderer and self.renderer.scene:
             scene = self.renderer.scene
-            # Check if scene has text entities (like SplashScene)
-            if hasattr(scene, 'get_text_entities'):
+            
+            # Check if scene has a render_ui method (new UI system)
+            if hasattr(scene, 'render_ui'):
+                scene.render_ui(self.text_renderer)
+            # Fallback: Check if scene has text entities (legacy SplashScene)
+            elif hasattr(scene, 'get_text_entities'):
                 text_entities = scene.get_text_entities()
                 self.text_renderer.render_text_objects(text_entities)
-        
-        # Render additional UI text overlays after 3D rendering
-        if self.text_renderer and hasattr(self, '_ui_text_callback') and self._ui_text_callback:
-            self._ui_text_callback(self.text_renderer)
         
         # Swap buffers AFTER all rendering (3D + text) is complete
         if self.window:

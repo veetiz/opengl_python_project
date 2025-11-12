@@ -35,8 +35,8 @@ class SplashScene(Scene):
         self.loading_font = loading_font
         
         # Screen dimensions (will be updated)
-        self.screen_width = 800
-        self.screen_height = 600
+        self.screen_width = 800  # Default, matches default window size
+        self.screen_height = 600  # Default, matches default window size
         
         # Create text entities (positions will be updated when screen size is known)
         self._create_text_entities()
@@ -171,4 +171,21 @@ class SplashScene(Scene):
         if self.loading_text:
             texts.append(self.loading_text)
         return texts
+    
+    def render_ui(self, text_renderer):
+        """
+        Render splash screen UI.
+        Called by application to render splash text.
+        Uses the existing get_text_entities() + render_text_objects() approach.
+        
+        Args:
+            text_renderer: TextRenderer instance
+        """
+        if not text_renderer:
+            return
+        
+        # Render text objects using the working method
+        text_entities = self.get_text_entities()
+        if text_entities:
+            text_renderer.render_text_objects(text_entities)
 

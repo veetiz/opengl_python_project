@@ -248,7 +248,15 @@ def create_splash_scene(app, main_scene):
     print("Creating splash scene...")
     print("=" * 70)
     
+    # Create splash with actual window dimensions
     splash = SplashScene(name="Splash")
+    
+    # Update screen dimensions to match actual window size
+    if app.width and app.height:
+        splash.screen_width = app.width
+        splash.screen_height = app.height
+        print(f"[SplashScene] Using window dimensions: {app.width}x{app.height}")
+    
     splash.set_title("OpenGL Game Engine")
     splash.set_loading_text("Loading...")
     
