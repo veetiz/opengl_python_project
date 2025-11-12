@@ -12,6 +12,11 @@ from .font_loader import FontLoader
 from .ui_element import UIElement, Anchor
 from .ui_manager import UIManager
 
+# UI System - CSS-like sizing
+from .ui_units import UISize, UnitType, px, percent, vw, vh
+from .ui_compiler import UICompiler
+from .ui_component import UIComponent
+
 # UI System - OpenGL-based components
 from .ui_renderer import UIRenderer
 from .ui_style import (
@@ -41,6 +46,16 @@ __all__ = [
     'UIElement',
     'Anchor',
     'UIManager',
+    
+    # UI System - CSS-like sizing
+    'UISize',
+    'UnitType',
+    'px',
+    'percent',
+    'vw',
+    'vh',
+    'UICompiler',
+    'UIComponent',
     
     # UI System - OpenGL Components
     'UIRenderer',

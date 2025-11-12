@@ -5,6 +5,7 @@ Manages all UI elements, handles input routing, and coordinates rendering.
 
 from typing import List, Optional, Tuple
 from .ui_element import UIElement
+from .ui_compiler import UICompiler
 
 
 class UIManager:
@@ -35,7 +36,10 @@ class UIManager:
         self.mouse_y = 0.0
         self.mouse_pressed = False
         
-        print("[UIManager] Initialized")
+        # CSS-like size compiler (%, vw, vh → px)
+        self.compiler = UICompiler(window_width, window_height)
+        
+        print("[UIManager] Initialized with CSS-like sizing support")
     
     def add_element(self, element: UIElement):
         """
@@ -128,10 +132,15 @@ class UIManager:
     def render(self, text_renderer):
         """
         Render all UI elements in layer order (back to front).
+        Compiles CSS-like sizes (%, vw, vh) before rendering.
         
         Args:
             text_renderer: TextRenderer instance for drawing
         """
+        # Compile sizes for all elements (%, vw, vh → px)
+        for element in self.elements:
+            self._compile_element_recursive(element)
+        
         # Sort elements by layer (lower layers first, higher layers on top)
         sorted_elements = sorted(self.elements, key=lambda e: e.layer)
         
@@ -140,9 +149,25 @@ class UIManager:
             if element.visible:
                 element.render(text_renderer)
     
+    def _compile_element_recursive(self, element):
+        """
+        Recursively compile an element and its children.
+        
+        Args:
+            element: Element to compile
+        """
+        # Check if element supports CSS-like sizing
+        if hasattr(element, 'x_size') and hasattr(element, 'compiled_x'):
+            self.compiler.compile_component(element)
+        
+        # Compile children
+        if hasattr(element, 'children'):
+            for child in element.children:
+                self._compile_element_recursive(child)
+    
     def set_window_size(self, width: int, height: int):
         """
-        Update window size (for anchor calculations).
+        Update window size (for anchor calculations and CSS-like sizing).
         
         Args:
             width: New window width
@@ -150,6 +175,9 @@ class UIManager:
         """
         self.window_width = width
         self.window_height = height
+        
+        # Update compiler viewport
+        self.compiler.set_viewport(width, height)
     
     def get_element_at(self, x: float, y: float) -> Optional[UIElement]:
         """
