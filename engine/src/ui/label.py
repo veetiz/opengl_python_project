@@ -108,14 +108,18 @@ class UILabel(UIElement):
                 self.style.bg_color.to_tuple()
             )
         
-        # Draw text
+        # Draw text (use actual scaled text size for positioning)
         if text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
+            # Calculate actual rendered text height for consistent positioning
+            actual_text_scale = self.size * self.style.text_size
+            text_height = 16 * actual_text_scale  # Standard text height calculation
+            
             text_renderer.render_text(
                 text_renderer.font,
                 self.text,
                 int(x),
-                int(y + self.height),
-                scale=self.size * self.style.text_size,
+                int(y + text_height),  # Use scaled text height for offset
+                scale=actual_text_scale,
                 color=self.style.text_color.to_rgb()
             )
         
