@@ -6,6 +6,9 @@ Manages all UI elements, handles input routing, and coordinates rendering.
 from typing import List, Optional, Tuple
 from .ui_element import UIElement
 from .ui_compiler import UICompiler
+from OpenGL.GL import (glIsEnabled, glEnable, glDisable, GL_BLEND, 
+                       GL_DEPTH_TEST, GL_CULL_FACE, glBlendFunc, 
+                       GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 
 class UIManager:
@@ -38,6 +41,10 @@ class UIManager:
         
         # CSS-like size compiler (%, vw, vh → px)
         self.compiler = UICompiler(window_width, window_height)
+        
+        # OpenGL state tracking for proper state management
+        self._saved_depth_state = False
+        self._saved_cull_state = False
         
         print("[UIManager] Initialized with CSS-like sizing support")
     
@@ -183,6 +190,34 @@ class UIManager:
         
         # Update compiler viewport
         self.compiler.set_viewport(width, height)
+    
+    def prepare_for_rendering(self):
+        """
+        Prepare OpenGL state for 2D UI rendering.
+        Saves current state and sets up for 2D rendering (no depth, no culling, blending).
+        Call this before rendering UI elements.
+        """
+        # Save current OpenGL state
+        self._saved_depth_state = glIsEnabled(GL_DEPTH_TEST)
+        self._saved_cull_state = glIsEnabled(GL_CULL_FACE)
+        
+        # Set up for 2D UI rendering
+        glDisable(GL_DEPTH_TEST)      # 2D UI doesn't need depth testing
+        glDisable(GL_CULL_FACE)       # UI should never be culled
+        glEnable(GL_BLEND)            # Enable transparency
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    
+    def restore_after_rendering(self):
+        """
+        Restore OpenGL state after UI rendering.
+        Restores the state that was saved by prepare_for_rendering().
+        Call this after rendering UI elements.
+        """
+        # Restore previous OpenGL state
+        if self._saved_depth_state:
+            glEnable(GL_DEPTH_TEST)
+        if self._saved_cull_state:
+            glEnable(GL_CULL_FACE)
     
     def get_element_at(self, x: float, y: float) -> Optional[UIElement]:
         """

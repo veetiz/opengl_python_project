@@ -386,17 +386,8 @@ class SettingsMenuScene(Scene):
                 self._ui_font = FontLoader.load("C:/Windows/Fonts/arial.ttf", 24)
                 print(f"[SettingsMenu] UI font loaded")
             
-            # Save OpenGL state before UI rendering
-            from OpenGL.GL import (glIsEnabled, glEnable, glDisable, GL_BLEND, 
-                                  GL_DEPTH_TEST, glBlendFunc, GL_SRC_ALPHA, 
-                                  GL_ONE_MINUS_SRC_ALPHA)
-            
-            depth_was_enabled = glIsEnabled(GL_DEPTH_TEST)
-            
-            # Set up for 2D UI rendering
-            glDisable(GL_DEPTH_TEST)
-            glEnable(GL_BLEND)
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            # Prepare OpenGL state for 2D UI rendering (handled by UIManager)
+            self.ui_manager.prepare_for_rendering()
             
             # Attach font to text_renderer for labels
             text_renderer.font = self._ui_font
@@ -433,7 +424,6 @@ class SettingsMenuScene(Scene):
             if hasattr(text_renderer, 'font'):
                 delattr(text_renderer, 'font')
             
-            # Restore OpenGL state
-            if depth_was_enabled:
-                glEnable(GL_DEPTH_TEST)
+            # Restore OpenGL state (handled by UIManager)
+            self.ui_manager.restore_after_rendering()
 
