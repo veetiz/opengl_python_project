@@ -47,6 +47,7 @@ class SplashTransitionScript(GameScript):
         
         if elapsed >= self.duration:
             print(f"\n[SplashTransitionScript] Transitioning to main scene...")
+            print(f"[SplashTransition] Main scene has particle_system: {hasattr(self.main_scene, 'particle_system')}")
             if self.app and self.main_scene:
                 self.app.set_scene(self.main_scene)
                 # Load deferred textures for the main scene

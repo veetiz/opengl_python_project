@@ -10,6 +10,8 @@ from engine.src import (
     ModelLoader, Texture, FontLoader, DirectionalLight, PointLight, SpotLight, Material,
     Text3D, AudioClip, Audio2D, Audio3D
 )
+# Import particle system
+from engine.src.effects import ParticleSystem, ParticlePresets
 from game.scripts import RotateScript, FPSCounterScript, CameraMovementScript, TextUIScript, SplashTransitionScript
 
 
@@ -232,12 +234,80 @@ def create_main_scene():
     # scene.add_audio_source(ambient_sound)
     # print(f"[OK] 3D ambient sound added at {ambient_sound.position}")
     
+    # === ADD PARTICLE EFFECTS (WILL INITIALIZE AFTER OpenGL CONTEXT IS READY) ===
+    print("\n[Particles] Creating particle system (will init later)...")
+    particle_system = ParticleSystem()
+    # DON'T call init() here - OpenGL context not ready yet!
+    if True:  # Will init in app.run() after OpenGL is ready
+        # Fire effect next to wooden object
+        from engine.src.effects import ParticleEmitter
+        fire = ParticleEmitter(
+            position=(1.5, 0.0, 0.0),  # Right side of wooden object
+            emission_rate=60.0,
+            max_particles=250,
+            particle_lifetime=2.5,
+            particle_size=0.4,  # Nice visible size
+            emit_velocity=(0.0, 2.0, 0.0),  # Rise upward
+            velocity_randomness=0.5,
+            color=(1.0, 0.5, 0.1, 1.0),  # Orange fire color
+            gravity=(0.0, 0.5, 0.0),  # Slight upward gravity
+            emitter_type="point"
+        )
+        # Fire color gradient: orange -> red -> dark
+        fire.color_over_lifetime = lambda t: (1.0, 0.3 + t * 0.2, 0.0, t)
+        fire.size_over_lifetime = lambda t: 0.3 + t * 0.5  # Grow over lifetime
+        particle_system.add_emitter("campfire", fire)
+        print("[Particles] Added campfire effect at (1.5, 0, 0)")
+        
+        # Sparkles floating above
+        sparkles = ParticleEmitter(
+            position=(0.0, 2.5, 0.0),  # Above wooden object
+            emission_rate=30.0,
+            max_particles=150,
+            particle_lifetime=3.0,
+            particle_size=0.25,  # Small and delicate
+            emit_velocity=(0.0, -0.5, 0.0),  # Fall slowly
+            velocity_randomness=0.7,
+            color=(1.0, 1.0, 0.3, 0.9),  # Bright yellow
+            gravity=(0.0, -1.5, 0.0),  # Fall down
+            emitter_type="sphere"
+        )
+        sparkles.color_over_lifetime = lambda t: (1.0, 1.0, 0.5, t * 0.7)
+        particle_system.add_emitter("magic_sparkles", sparkles)
+        print("[Particles] Added sparkles effect at (0, 2.5, 0)")
+        
+        # Smoke on the left
+        smoke = ParticleEmitter(
+            position=(-1.5, 0.0, 0.0),  # Left side of wooden object
+            emission_rate=25.0,
+            max_particles=120,
+            particle_lifetime=4.0,
+            particle_size=0.6,  # Medium smoke puffs
+            emit_velocity=(0.0, 1.5, 0.0),  # Rise slowly
+            velocity_randomness=0.3,
+            color=(0.7, 0.7, 0.7, 0.5),  # Gray smoke
+            gravity=(0.0, 0.3, 0.0),  # Slight upward drift
+            emitter_type="point"
+        )
+        smoke.color_over_lifetime = lambda t: (0.6, 0.6, 0.6, t * 0.4)
+        smoke.size_over_lifetime = lambda t: 0.5 + t * 1.0  # Expand over time
+        particle_system.add_emitter("ambient_smoke", smoke)
+        print("[Particles] Added smoke effect at (-1.5, 0, 0)")
+        
+        # Attach particle system to scene (will initialize when OpenGL is ready)
+        scene.particle_system = particle_system
+        print("[OK] Particle system created with 3 beautiful effects")
+        print(f"[OK] Effects: Fire (right), Sparkles (above), Smoke (left)")
+    else:
+        print("[WARNING] Failed to create particle system")
+    
     print(f"\n[OK] Main scene created with:")
     print(f"  - {scene.object_count} object(s)")
     print(f"  - {scene.camera_count} camera(s)")
     print(f"  - {scene.light_count} light(s)")
     print(f"  - {scene.text3d_count} 3D text(s)")
     print(f"  - {scene.audio_source_count} audio source(s)")
+    print(f"  - Particle system with 3 emitters")
     
     return scene, text_ui_script
 

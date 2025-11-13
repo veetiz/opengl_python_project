@@ -27,6 +27,7 @@ class Scene:
         self.game_objects: List['GameObject'] = []
         self.cameras: List['Camera'] = []
         self.lights: List['Light'] = []
+        self.text2d_objects: List = []  # 2D text entities (UI overlay)
         self.text3d_objects: List = []  # 3D text entities
         self.audio_sources: List = []  # Audio sources (Audio2D and Audio3D)
         self.active_camera_index: int = 0

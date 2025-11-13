@@ -43,6 +43,12 @@ from .systems import (
     AssetLoader, AssetCache
 )
 
+# Effects
+from .effects import (
+    Particle, ParticleEmitter, ParticleRenderer,
+    ParticleSystem, ParticlePresets
+)
+
 __all__ = [
     # Core
     'Application',
@@ -109,6 +115,13 @@ __all__ = [
     'TaskPriority',
     'AssetLoader',
     'AssetCache',
+    
+    # Effects
+    'Particle',
+    'ParticleEmitter',
+    'ParticleRenderer',
+    'ParticleSystem',
+    'ParticlePresets',
 ]
 
 __version__ = '2.0.0'

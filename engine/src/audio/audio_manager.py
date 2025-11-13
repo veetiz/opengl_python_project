@@ -54,7 +54,11 @@ class AudioManager:
     def _init_audio(self) -> bool:
         """Initialize pygame mixer."""
         try:
-            # Initialize pygame mixer
+            # Prevent pygame from creating a video window
+            import os
+            os.environ['SDL_VIDEODRIVER'] = 'dummy'
+            
+            # Initialize pygame mixer (audio only)
             pygame.mixer.init(
                 frequency=self.frequency,
                 size=self.size,

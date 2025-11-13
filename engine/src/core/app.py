@@ -320,6 +320,22 @@ class Application:
         # Update screen size for splash scenes
         if hasattr(scene, 'set_screen_size'):
             scene.set_screen_size(self.width, self.height)
+        
+        # Initialize particle system if this scene has one (and it's not initialized yet)
+        if hasattr(scene, 'particle_system') and scene.particle_system:
+            # Check if renderer is initialized (not the system itself)
+            if not (hasattr(scene.particle_system, 'renderer') and scene.particle_system.renderer and scene.particle_system.renderer.initialized):
+                print(f"[Application] Initializing particle system for scene '{scene.name}'...")
+                if scene.particle_system.init():
+                    print("[OK] Particle system initialized successfully")
+                    # Pre-spawn some particles for immediate visibility
+                    for emitter in scene.particle_system.emitters.values():
+                        emitter.is_emitting = True
+                        for _ in range(20):
+                            emitter._spawn_particle()
+                    print(f"[OK] Pre-spawned particles in {len(scene.particle_system.emitters)} emitters")
+                else:
+                    print("[ERROR] Failed to initialize particle system!")
     
     def set_ui_text_callback(self, callback):
         """
@@ -396,6 +412,20 @@ class Application:
         
         # Now that scene is set AND OpenGL context exists, load textures
         self._load_deferred_textures()
+        
+        # Initialize particle system if present (must be after OpenGL context is ready)
+        if scene and hasattr(scene, 'particle_system') and scene.particle_system:
+            print("[Application] Initializing particle system (OpenGL context ready)...")
+            if scene.particle_system.init():
+                print("[OK] Particle system initialized successfully")
+                # Pre-spawn some particles for immediate visibility
+                for emitter in scene.particle_system.emitters.values():
+                    emitter.is_emitting = True
+                    for _ in range(20):
+                        emitter._spawn_particle()
+                print(f"[OK] Pre-spawned particles in {len(scene.particle_system.emitters)} emitters")
+            else:
+                print("[ERROR] Failed to initialize particle system!")
         
         # Start all scripts before main loop so fonts are loaded
         if scene:
@@ -514,6 +544,10 @@ class Application:
                     # Update all scripts (handles camera movement via CameraMovementScript)
                     self.renderer.scene.update_scripts(delta_time)
                     
+                    # Update particle system if scene has one
+                    if hasattr(self.renderer.scene, 'particle_system') and self.renderer.scene.particle_system:
+                        self.renderer.scene.particle_system.update(delta_time)
+                    
                     # Update audio listener to match active camera
                     active_camera = self.renderer.scene.get_active_camera()
                     if active_camera and self.audio_listener:
@@ -562,6 +596,16 @@ class Application:
                     projection_matrix
                 )
         
+        # Render particles (if scene has particle system)
+        if self.renderer and self.renderer.scene:
+            scene = self.renderer.scene
+            if hasattr(scene, 'particle_system') and scene.particle_system:
+                active_camera = scene.get_active_camera()
+                if active_camera:
+                    view_matrix = active_camera.get_view_matrix()
+                    projection_matrix = active_camera.get_projection_matrix()
+                    scene.particle_system.render(view_matrix, projection_matrix)
+        
         # Render additional UI text overlays after 3D rendering
         # IMPORTANT: Call callback FIRST to set fonts before rendering!
         if self.text_renderer and hasattr(self, '_ui_text_callback') and self._ui_text_callback:
@@ -578,6 +622,10 @@ class Application:
             glDisable(GL_CULL_FACE)
             if cull_state_before:
                 print(f"[DEBUG] Culling was ENABLED before UI render - now DISABLED")
+            
+            # Render 2D text overlay objects (if any)
+            if hasattr(scene, 'text2d_objects') and len(scene.text2d_objects) > 0:
+                self.text_renderer.render_text_objects(scene.text2d_objects)
             
             # Check if scene has a render_ui method (new UI system)
             if hasattr(scene, 'render_ui'):
