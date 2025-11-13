@@ -122,7 +122,7 @@ class SettingsMenuScene(Scene):
             x=percent(3),      # ~20px from ~640px panel
             y=percent(1.5),    # Top of panel
             text="SETTINGS",
-            size=2.5,  # Fixed multiplier - theme.text_size handles scaling
+            size=2.0,  # Reduced from 2.5 - more balanced with sections
             bold=True,
             style=self.theme.label
         )
@@ -134,7 +134,7 @@ class SettingsMenuScene(Scene):
             x=percent(3),      # ~20px
             y=percent(7),      # Increased spacing from title
             text="GRAPHICS",
-            size=1.8,  # Fixed multiplier - theme.text_size handles scaling
+            size=1.5,  # Reduced from 1.8 - smaller section header
             bold=True,
             style=self.theme.label
         )
@@ -244,7 +244,7 @@ class SettingsMenuScene(Scene):
             x=percent(3),       # ~20px
             y=percent(48),      # Spacing from checkboxes
             text="AUDIO",
-            size=1.8,  # Fixed multiplier - theme.text_size handles scaling
+            size=1.5,  # Reduced from 1.8 - smaller section header
             bold=True,
             style=self.theme.label
         )
