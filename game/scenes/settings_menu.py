@@ -202,11 +202,12 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(msaa_dropdown)
         
-        # Label vertically centered with dropdown
-        # Align to dropdown Y position (they center themselves internally)
+        # Label vertically centered with dropdown text
+        # Dropdown text is centered at: dropdown.y + dropdown.height/2
+        # We need to offset label to match that vertical center
         msaa_label = UILabel(
             x=percent(3),       # ~20px
-            y=msaa_y_pos,       # Same Y as dropdown for consistent alignment
+            y=calc(msaa_y_pos, mul(msaa_height, px(0.3))),  # Offset to center with dropdown text
             text="MSAA:",
             size=1.0,           # Standard size for inline labels
             style=self.theme.label
