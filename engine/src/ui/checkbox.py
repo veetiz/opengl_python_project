@@ -129,10 +129,12 @@ class UICheckbox(UIElement):
                 check_color.to_tuple()
             )
         
-        # Draw label
+        # Draw label (scaled positioning)
         if self.label and text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
-            label_x = x + box_size + 10
-            label_y = y + box_size / 2 + 8
+            label_offset_x = 10 * self.style.text_size  # Scale horizontal spacing
+            label_offset_y = 8 * self.style.text_size   # Scale vertical offset
+            label_x = x + box_size + label_offset_x
+            label_y = y + box_size / 2 + label_offset_y
             
             text_renderer.render_text(
                 text_renderer.font,

@@ -200,7 +200,8 @@ class UIDropdown(UIElement):
         if text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
             text = self.get_selected_text()
             text_x = x + self.style.padding
-            text_y = y + h / 2 + 8
+            text_y_offset = 8 * self.style.text_size  # Scale vertical offset
+            text_y = y + h / 2 + text_y_offset
             
             text_renderer.render_text(
                 text_renderer.font,
@@ -211,14 +212,15 @@ class UIDropdown(UIElement):
                 color=self.style.text_color.to_rgb()
             )
             
-            # Draw arrow indicator
+            # Draw arrow indicator (scaled positioning)
             arrow = "▼" if self.is_open else "▶"
+            arrow_offset_x = -25 * self.style.text_size  # Scale arrow offset
             text_renderer.render_text(
                 text_renderer.font,
                 "v" if self.is_open else ">",  # ASCII fallback
-                int(x + w - 25),
+                int(x + w + arrow_offset_x),
                 int(text_y),
-                scale=0.8,
+                scale=self.style.text_size,  # Use theme text_size (scales with window!)
                 color=self.style.text_color.to_rgb()
             )
         
@@ -262,10 +264,11 @@ class UIDropdown(UIElement):
                         self.style.hover_color.to_tuple()
                     )
                 
-                # Draw option text
+                # Draw option text (scaled positioning)
                 if text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
                     opt_text_x = x + self.style.padding
-                    opt_text_y = option_y + self.style.item_height / 2 + 8
+                    opt_text_y_offset = 8 * self.style.text_size  # Scale vertical offset
+                    opt_text_y = option_y + self.style.item_height / 2 + opt_text_y_offset
                     
                     text_renderer.render_text(
                         text_renderer.font,

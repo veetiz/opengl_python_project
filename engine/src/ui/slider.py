@@ -219,14 +219,15 @@ class UISlider(UIElement):
             handle_color.to_tuple()
         )
         
-        # Draw label well above the slider (more spacing)
+        # Draw label at slider level (scaled spacing)
         if self.label and text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
+            label_offset_y = 5 * self.style.text_size  # Positive offset - moves down
             text_renderer.render_text(
                 text_renderer.font,
                 self.label,
                 int(x),
-                int(y - 5),  # Above the component
-                scale=0.8,
+                int(y + label_offset_y),  # Below slider Y position
+                scale=self.style.text_size,  # Use theme text_size (scales with window!)
                 color=(1.0, 1.0, 1.0)
             )
         
@@ -242,14 +243,16 @@ class UISlider(UIElement):
                 # Show percentage for volume sliders
                 value_text = f"{int(self._value * 100)}%"
             
-            # Position value text above and to the right of handle (use compiled width)
+            # Position value text above and to the right of handle (scaled offsets)
             handle_x = x + (w * percentage)
+            value_offset_x = -20 * self.style.text_size  # Scale horizontal offset
+            value_offset_y = -8 * self.style.text_size   # Scale vertical offset
             text_renderer.render_text(
                 text_renderer.font,
                 value_text,
-                int(handle_x - 20),
-                int(track_y - 8),
-                scale=0.6,
+                int(handle_x + value_offset_x),
+                int(track_y + value_offset_y),
+                scale=self.style.text_size * 0.6,  # Proportional to theme text size
                 color=(1.0, 1.0, 1.0)
             )
         

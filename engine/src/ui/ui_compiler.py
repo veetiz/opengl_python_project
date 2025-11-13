@@ -254,7 +254,10 @@ class UICompiler:
                 # Width drives height (default behavior)
                 component.compiled_height = component.compiled_width / component.aspect_ratio
         
-        # Apply min/max clamping
+        # Apply min/max clamping and track if size changed
+        original_width = component.compiled_width
+        original_height = component.compiled_height
+        
         if hasattr(component, 'compiled_min_width') and component.compiled_min_width is not None:
             component.compiled_width = max(component.compiled_width, component.compiled_min_width)
         
@@ -266,6 +269,23 @@ class UICompiler:
         
         if hasattr(component, 'compiled_max_height') and component.compiled_max_height is not None:
             component.compiled_height = min(component.compiled_height, component.compiled_max_height)
+        
+        # CRITICAL: If size changed due to constraints, adjust centering!
+        # Check if position uses calc with negative vw/vh (centering pattern)
+        width_changed = abs(component.compiled_width - original_width) > 0.1
+        height_changed = abs(component.compiled_height - original_height) > 0.1
+        
+        if width_changed or height_changed:
+            # Re-center based on actual constrained size
+            # Only if using calc-based centering (no parent - root element)
+            if component.parent is None:
+                if width_changed:
+                    # Recalculate x for centering: (viewport_width - actual_width) / 2
+                    component.compiled_x = (self.viewport_width - component.compiled_width) / 2
+                
+                if height_changed:
+                    # Recalculate y for centering: (viewport_height - actual_height) / 2
+                    component.compiled_y = (self.viewport_height - component.compiled_height) / 2
         
         # Compile children recursively
         if hasattr(component, 'children'):

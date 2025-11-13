@@ -7,7 +7,7 @@ from engine.src import Scene, SettingsManager, SettingsPresets
 from engine.src.ui import (
     UIManager, UIPanel, UIButton, UILabel, UISlider,
     UICheckbox, UIDropdown, Anchor, DefaultTheme,
-    FlexContainer, px, vw, vh, percent, calc
+    FlexContainer, px, vw, vh, percent, calc, add, sub, mul, div
 )
 
 
@@ -42,6 +42,7 @@ class SettingsMenuScene(Scene):
         
         self._initialized = False
         self._debug_buttons_once = False
+        self._ui_scale_factor = 1.0  # Dynamic scale based on window size
     
     def initialize_ui(self, window_width: int, window_height: int):
         """
@@ -56,28 +57,72 @@ class SettingsMenuScene(Scene):
         
         print("[SettingsMenu] Initializing modern UI with CSS-like sizing...")
         
+        # Calculate UI scale factor based on window size (reference: 1280x720)
+        self._ui_scale_factor = min(window_width / 1280.0, window_height / 720.0)
+        print(f"[SettingsMenu] UI scale factor: {self._ui_scale_factor:.2f}")
+        
+        # Create scaled theme for this resolution
+        scaled_theme = DefaultTheme()
+        
+        # Scale button theme (ALL properties)
+        scaled_theme.button.text_size = 1.0 * self._ui_scale_factor
+        scaled_theme.button.padding = 15.0 * self._ui_scale_factor
+        scaled_theme.button.border_width = 2.0 * self._ui_scale_factor
+        scaled_theme.button.border_radius = 5.0 * self._ui_scale_factor
+        
+        # Scale label theme (ALL properties)
+        scaled_theme.label.text_size = 1.0 * self._ui_scale_factor
+        scaled_theme.label.padding = 0.0  # Labels don't use padding
+        
+        # Scale slider theme (ALL properties)
+        scaled_theme.slider.text_size = 1.0 * self._ui_scale_factor
+        scaled_theme.slider.track_height = 8.0 * self._ui_scale_factor
+        scaled_theme.slider.handle_radius = 12.0 * self._ui_scale_factor
+        scaled_theme.slider.border_width = 2.0 * self._ui_scale_factor
+        scaled_theme.slider.label_spacing = 10.0 * self._ui_scale_factor
+        
+        # Scale dropdown theme (ALL properties)
+        scaled_theme.dropdown.text_size = 1.0 * self._ui_scale_factor
+        scaled_theme.dropdown.padding = 10.0 * self._ui_scale_factor
+        scaled_theme.dropdown.border_width = 2.0 * self._ui_scale_factor
+        scaled_theme.dropdown.border_radius = 3.0 * self._ui_scale_factor
+        scaled_theme.dropdown.item_height = 30.0 * self._ui_scale_factor
+        
+        # Scale checkbox theme (ALL properties)
+        scaled_theme.checkbox.text_size = 1.0 * self._ui_scale_factor
+        scaled_theme.checkbox.box_size = 20.0 * self._ui_scale_factor
+        scaled_theme.checkbox.border_width = 2.0 * self._ui_scale_factor
+        scaled_theme.checkbox.border_radius = 3.0 * self._ui_scale_factor
+        scaled_theme.checkbox.check_padding = 4.0 * self._ui_scale_factor
+        
+        # Scale panel theme (ALL properties)
+        scaled_theme.panel.padding = 20.0 * self._ui_scale_factor
+        scaled_theme.panel.border_width = 2.0 * self._ui_scale_factor
+        scaled_theme.panel.border_radius = 10.0 * self._ui_scale_factor
+        
+        self.theme = scaled_theme
+        
         self.ui_manager = UIManager(window_width, window_height)
         
         # Main panel (responsive, centered, constrained)
         # Uses vw/vh for responsiveness, calc for centering, min/max for constraints
         main_panel = UIPanel(
-            x=calc(vw(50), px(-300)),  # Center (50% - half width)
-            y=calc(vh(50), px(-250)),  # Center (50% - half height)
-            width=px(600),
-            height=px(500),
-            min_width=px(500),   # Minimum size for readability
-            max_width=px(800),   # Maximum size for aesthetics
+            x=calc(vw(50), vw(-27.5)),  # Center: 50% - half of 55% = 50% - 27.5%
+            y=calc(vh(50), vh(-42.5)),  # Center: 50% - half of 85% = 50% - 42.5%
+            width=vw(55),      # 55% of viewport width
+            height=vh(85),     # 85% of viewport height
+            min_width=px(600),  # Minimum size
+            max_width=px(1200), # Maximum size
             style=self.theme.panel
         )
         self.ui_manager.add_element(main_panel)
         
-        # Title (percentage-based positioning within panel)
+        # Title (responsive positioning, fixed size multiplier)
         title = UILabel(
-            x=px(20),
-            y=px(10),
-            width=calc(percent(100), px(-40)),  # Full width - 40px padding
+            x=percent(3),      # ~20px from ~640px panel
+            y=percent(1.5),    # Top of panel
             text="SETTINGS",
-            size=1.5,
+            size=2.5,  # Fixed multiplier - theme.text_size handles scaling
             bold=True,
             style=self.theme.label
         )
@@ -86,23 +131,30 @@ class SettingsMenuScene(Scene):
         # === GRAPHICS SECTION ===
         
         graphics_header = UILabel(
-            x=px(20),
-            y=px(50),
+            x=percent(3),      # ~20px
+            y=percent(7),      # Increased spacing from title
             text="GRAPHICS",
-            size=1.2,
+            size=1.8,  # Fixed multiplier - theme.text_size handles scaling
             bold=True,
             style=self.theme.label
         )
         main_panel.add_child(graphics_header)
         
-        # Graphics preset buttons (simple positioning - FlexContainer has positioning bugs)
+        # Graphics preset buttons (safe sizing to prevent overflow)
         presets = ["Low", "Medium", "High", "Ultra"]
+        button_width = percent(20)     # Safe width
+        button_spacing = percent(2)    # Spacing
+        start_x = percent(3)           # Left padding
+        
         for i, preset in enumerate(presets):
+            # Calculate position: start + (width + spacing) * index
+            # Total: 3% + 4×(20% + 2%) - 2% = 89% (leaves 11% right margin)
+            btn_x = calc(start_x, mul(add(button_width, button_spacing), px(i)))
             btn = UIButton(
-                x=px(20 + i * 135),  # Evenly spaced: 20, 155, 290, 425
-                y=px(80),
-                width=px(125),
-                height=px(35),
+                x=btn_x,
+                y=percent(13),      # More space from GRAPHICS header
+                width=button_width,
+                height=percent(7.4), # ~45px
                 text=preset,
                 on_click=lambda p=preset.lower(): self._on_preset_click(p),
                 style=self.theme.button
@@ -114,10 +166,10 @@ class SettingsMenuScene(Scene):
         shadow_value = {512: 0.0, 1024: 0.33, 2048: 0.66, 4096: 1.0}.get(shadow_current, 0.66)
         
         shadow_slider = UISlider(
-            x=px(20),
-            y=px(145),
-            width=calc(percent(100), px(-120)),  # Full width - margins
-            height=px(30),
+            x=percent(3),       # Left padding
+            y=percent(23),      # Increased spacing from buttons
+            width=percent(91),  # Safe width, no overflow (3% + 91% + 6% = 100%)
+            height=percent(5.7),  # ~35px
             min_value=0.0,
             max_value=1.0,
             current_value=shadow_value,
@@ -129,25 +181,20 @@ class SettingsMenuScene(Scene):
         
         # MSAA Dropdown (with label, using FlexContainer)
         # MSAA (simple positioning - FlexContainer has bugs)
-        msaa_label = UILabel(
-            x=px(20),
-            y=px(195),
-            text="MSAA:",
-            size=0.9,
-            style=self.theme.label
-        )
-        main_panel.add_child(msaa_label)
-        
         msaa_current = self.app.settings.get('graphics.msaa_samples') if self.app else 4
         msaa_options = ["Off", "2x", "4x", "8x"]
         msaa_map = {0: 0, 2: 1, 4: 2, 8: 3}
         msaa_index = msaa_map.get(msaa_current, 2)
         
+        # MSAA dropdown and label (vertically centered)
+        msaa_y_pos = percent(32)    # Spacing from shadow slider
+        msaa_height = percent(5.7)  # ~35px - dropdown height
+        
         msaa_dropdown = UIDropdown(
-            x=px(100),
-            y=px(190),
-            width=px(150),
-            height=px(30),
+            x=percent(18.75),   # ~120px
+            y=msaa_y_pos,       # Dropdown position
+            width=percent(23.44), # ~150px
+            height=msaa_height,
             options=msaa_options,
             selected_index=msaa_index,
             on_select=self._on_msaa_change,
@@ -155,12 +202,23 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(msaa_dropdown)
         
+        # Label vertically centered with dropdown
+        # Align to dropdown Y position (they center themselves internally)
+        msaa_label = UILabel(
+            x=percent(3),       # ~20px
+            y=msaa_y_pos,       # Same Y as dropdown for consistent alignment
+            text="MSAA:",
+            size=1.0,           # Standard size for inline labels
+            style=self.theme.label
+        )
+        main_panel.add_child(msaa_label)
+        
         # Checkboxes (not using FlexContainer - using simple positioning)
         # VSync Checkbox
         vsync_current = self.app.settings.get('window.vsync') if self.app else True
         vsync_checkbox = UICheckbox(
-            x=px(20),
-            y=px(240),
+            x=percent(3),       # ~20px
+            y=percent(40),      # Spacing from MSAA
             label="VSync",
             checked=vsync_current,
             on_toggle=self._on_vsync_toggle,
@@ -171,8 +229,8 @@ class SettingsMenuScene(Scene):
         # Fullscreen Checkbox
         fullscreen_current = self.app.settings.get('window.fullscreen') if self.app else False
         fullscreen_checkbox = UICheckbox(
-            x=px(200),
-            y=px(240),
+            x=percent(39),      # ~250px
+            y=percent(40),      # Same Y as VSync
             label="Fullscreen",
             checked=fullscreen_current,
             on_toggle=self._on_fullscreen_toggle,
@@ -183,23 +241,23 @@ class SettingsMenuScene(Scene):
         # === AUDIO SECTION ===
         
         audio_header = UILabel(
-            x=px(20),
-            y=px(290),
+            x=percent(3),       # ~20px
+            y=percent(48),      # Spacing from checkboxes
             text="AUDIO",
-            size=1.2,
+            size=1.8,  # Fixed multiplier - theme.text_size handles scaling
             bold=True,
             style=self.theme.label
         )
         main_panel.add_child(audio_header)
         
-        # Master Volume Slider (responsive width)
+        # Master Volume Slider
         master_vol_current = self.app.settings.get('audio.master_volume') if self.app else 0.8
         
         master_vol_slider = UISlider(
-            x=px(20),
-            y=px(335),
-            width=calc(percent(100), px(-120)),  # Responsive width
-            height=px(30),
+            x=percent(3),       # Left padding
+            y=percent(58),      # Increased from 55% - more gap from AUDIO header
+            width=percent(91),  # Safe width, no overflow
+            height=percent(5.7),  # ~35px
             min_value=0.0,
             max_value=1.0,
             current_value=master_vol_current,
@@ -209,14 +267,14 @@ class SettingsMenuScene(Scene):
         )
         main_panel.add_child(master_vol_slider)
         
-        # Music Volume Slider (responsive width)
+        # Music Volume Slider
         music_vol_current = self.app.settings.get('audio.music_volume') if self.app else 0.6
         
         music_vol_slider = UISlider(
-            x=px(20),
-            y=px(390),
-            width=calc(percent(100), px(-120)),  # Responsive width
-            height=px(30),
+            x=percent(3),       # Left padding
+            y=percent(67),      # Increased from 64% - consistent spacing
+            width=percent(91),  # Safe width, no overflow
+            height=percent(5.7),  # ~35px
             min_value=0.0,
             max_value=1.0,
             current_value=music_vol_current,
@@ -228,36 +286,42 @@ class SettingsMenuScene(Scene):
         
         # === ACTION BUTTONS ===
         
+        # Action buttons (safe sizing, no overflow)
+        action_button_width = percent(20)  # Safe width
+        action_spacing = percent(3.5)      # Space between buttons
+        
         # Apply Button
         apply_btn = UIButton(
-            x=px(20),
-            y=px(440),
-            width=px(120),
-            height=px(40),
+            x=percent(3),       # Left padding
+            y=percent(77),      # Increased from 74% - more gap from Music Volume
+            width=action_button_width,
+            height=percent(8.2),  # ~50px
             text="APPLY",
             on_click=self._on_apply,
             style=self.theme.button
         )
         main_panel.add_child(apply_btn)
         
-        # Reset Button
+        # Reset Button (start after Apply + spacing)
+        # 3 + 20 + 3.5 = 26.5
         reset_btn = UIButton(
-            x=px(160),
-            y=px(440),
-            width=px(120),
-            height=px(40),
+            x=percent(26.5),
+            y=percent(77),      # Same Y as Apply
+            width=action_button_width,
+            height=percent(8.2),
             text="RESET",
             on_click=self._on_reset,
             style=self.theme.button
         )
         main_panel.add_child(reset_btn)
         
-        # Back Button
+        # Back Button (start after Reset + spacing)
+        # 26.5 + 20 + 3.5 = 50
         back_btn = UIButton(
-            x=px(300),
-            y=px(440),
-            width=px(120),
-            height=px(40),
+            x=percent(50),
+            y=percent(77),      # Same Y as Apply/Reset
+            width=action_button_width,
+            height=percent(8.2),
             text="BACK",
             on_click=self._on_back,
             style=self.theme.button
@@ -375,14 +439,20 @@ class SettingsMenuScene(Scene):
         """
         Handle window resize events.
         Updates UI manager viewport for CSS-like sizing (vw/vh units).
+        Also recalculates UI scale factor and reinitializes UI.
         
         Args:
             width: New window width
             height: New window height
         """
         if self.ui_manager:
-            self.ui_manager.set_window_size(width, height)
-            print(f"[SettingsMenu] UI viewport updated: {width}x{height}")
+            # Clear old UI elements before reinitializing
+            self.ui_manager.clear()
+            self._initialized = False
+            
+            # Reinitialize with new dimensions and scale factor
+            self.initialize_ui(width, height)
+            print(f"[SettingsMenu] UI reinitialized for {width}x{height}")
     
     def render_ui(self, text_renderer):
         """
