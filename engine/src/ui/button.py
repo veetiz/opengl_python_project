@@ -115,11 +115,10 @@ class UIButton(UIElement):
         
         # Draw text (centered - use compiled sizes for accurate centering)
         if text_renderer and hasattr(text_renderer, 'font') and text_renderer.font:
-            # Rough text centering (scaled for proper alignment)
-            # All offsets scale with text_size for proportional positioning
-            text_width = len(self.text) * 10 * self.style.text_size
+            # Text centering calculation
+            text_width = len(self.text) * 10 * self.style.text_size  # Restored original
             text_height = 16 * self.style.text_size
-            # Use compiled sizes for proper centering
+            # Center text in button
             text_x = x + (w - text_width) / 2
             text_y = y + (h - text_height) / 2 + text_height
             
