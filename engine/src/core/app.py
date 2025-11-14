@@ -9,6 +9,7 @@ import time
 from .window import Window
 from .input import Input
 from ..rendering.renderer import OpenGLRenderer
+from ..rendering.render_pipeline import RenderPipeline
 from ..scene.scene import Scene
 from ..ui.text_renderer import TextRenderer
 from ..ui.text3d_renderer import Text3DRenderer
@@ -63,6 +64,7 @@ class Application:
         # Components
         self.window: Window = None
         self.renderer: OpenGLRenderer = None
+        self.render_pipeline: RenderPipeline = None  # Render pipeline orchestrator
         self.input: Input = None
         self.text_renderer: TextRenderer = None
         self.text3d_renderer = None
@@ -148,6 +150,16 @@ class Application:
         self.text3d_renderer = Text3DRenderer()
         if not self.text3d_renderer.init():
             print("ERROR: Failed to initialize Text3DRenderer")
+            return False
+        
+        # Initialize Render Pipeline and register all renderers
+        self.render_pipeline = RenderPipeline()
+        self.render_pipeline.register_scene_renderer(self.renderer)
+        self.render_pipeline.register_text3d_renderer(self.text3d_renderer)
+        self.render_pipeline.register_text2d_renderer(self.text_renderer)
+        self.render_pipeline.register_ui_renderer(self.ui_renderer)
+        if not self.render_pipeline.init():
+            print("ERROR: Failed to initialize render pipeline")
             return False
         
         # Initialize Audio Manager
@@ -348,6 +360,9 @@ class Application:
             callback: Function that takes TextRenderer as parameter
         """
         self._ui_text_callback = callback
+        # Also set it in the pipeline
+        if self.render_pipeline:
+            self.render_pipeline.set_ui_text_callback(callback)
     
     def _on_framebuffer_resize(self, width: int, height: int):
         """Handle framebuffer resize events."""
@@ -576,7 +591,15 @@ class Application:
         print(f"\nMain loop exited after {frame_count} frames")
     
     def _render_frame(self):
-        """Render a single frame."""
+        """Render a single frame using the render pipeline."""
+        # Execute the complete rendering pipeline
+        if self.render_pipeline:
+            self.render_pipeline.render()
+            # Swap buffers AFTER all rendering is complete
+            self.window.swap_buffers()
+            return
+        
+        # FALLBACK: Old rendering code (if pipeline not available)
         # Render 3D scene
         self.renderer.render_frame()
         

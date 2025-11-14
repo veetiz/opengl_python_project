@@ -8,7 +8,7 @@ Organized by functional categories.
 from .core import Application, Window, Input, Keyboard, Mouse
 
 # Rendering
-from .rendering import OpenGLRenderer, ShadowMap
+from .rendering import OpenGLRenderer, ShadowMap, RenderPipeline
 
 # Graphics
 from .graphics import (
@@ -60,6 +60,7 @@ __all__ = [
     # Rendering
     'OpenGLRenderer',
     'ShadowMap',
+    'RenderPipeline',
     
     # Graphics
     'Material',
