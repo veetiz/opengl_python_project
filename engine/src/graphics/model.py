@@ -4,8 +4,10 @@ Represents a 3D model with mesh data.
 """
 
 from typing import List, Optional, TYPE_CHECKING
+import numpy as np
 from .mesh import Mesh
 from .vertex import Vertex
+from .bounding_volume import BoundingBox, BoundingSphere
 
 if TYPE_CHECKING:
     from .texture import Texture
@@ -23,6 +25,9 @@ class Model:
         """
         self.name = name
         self.meshes: List[Mesh] = []
+        self._bounding_box: Optional[BoundingBox] = None
+        self._bounding_sphere: Optional[BoundingSphere] = None
+        self._bounds_dirty = True
     
     def add_mesh(self, mesh: Mesh):
         """
@@ -32,11 +37,93 @@ class Model:
             mesh: Mesh to add
         """
         self.meshes.append(mesh)
+        self._bounds_dirty = True  # Bounds need recalculation
     
     @property
     def mesh_count(self) -> int:
         """Get the number of meshes in this model."""
         return len(self.meshes)
+    
+    def _calculate_bounds(self):
+        """Calculate bounding volumes from meshes."""
+        if not self._bounds_dirty:
+            return
+        
+        if len(self.meshes) == 0:
+            # Degenerate bounds at origin
+            self._bounding_box = BoundingBox(
+                np.array([0.0, 0.0, 0.0]),
+                np.array([0.0, 0.0, 0.0])
+            )
+            self._bounding_sphere = BoundingSphere(
+                np.array([0.0, 0.0, 0.0]),
+                0.0
+            )
+            self._bounds_dirty = False
+            return
+        
+        # Calculate bounding box for each mesh
+        mesh_boxes = []
+        for mesh in self.meshes:
+            if mesh.vertex_count > 0:
+                box = BoundingBox.from_mesh(mesh)
+                mesh_boxes.append(box)
+        
+        if len(mesh_boxes) == 0:
+            self._bounding_box = BoundingBox(
+                np.array([0.0, 0.0, 0.0]),
+                np.array([0.0, 0.0, 0.0])
+            )
+            self._bounding_sphere = BoundingSphere(
+                np.array([0.0, 0.0, 0.0]),
+                0.0
+            )
+        else:
+            # Merge all mesh bounding boxes
+            self._bounding_box = BoundingBox.merge(mesh_boxes)
+            
+            # Calculate bounding sphere from AABB
+            center = self._bounding_box.center
+            radius = self._bounding_box.radius
+            self._bounding_sphere = BoundingSphere(center, radius)
+        
+        self._bounds_dirty = False
+    
+    def get_bounding_box(self, transform_matrix=None) -> BoundingBox:
+        """
+        Get the bounding box of this model.
+        
+        Args:
+            transform_matrix: Optional 4x4 matrix to transform bounds
+            
+        Returns:
+            BoundingBox
+        """
+        self._calculate_bounds()
+        
+        if transform_matrix is not None:
+            return self._bounding_box.transform(transform_matrix)
+        return self._bounding_box
+    
+    def get_bounding_sphere(self, transform_matrix=None) -> BoundingSphere:
+        """
+        Get the bounding sphere of this model.
+        
+        Args:
+            transform_matrix: Optional 4x4 matrix to transform bounds
+            
+        Returns:
+            BoundingSphere
+        """
+        self._calculate_bounds()
+        
+        if transform_matrix is not None:
+            return self._bounding_sphere.transform(transform_matrix)
+        return self._bounding_sphere
+    
+    def invalidate_bounds(self):
+        """Mark bounds as dirty (call when meshes change)."""
+        self._bounds_dirty = True
     
     @staticmethod
     def create_triangle(name: str = "Triangle") -> 'Model':

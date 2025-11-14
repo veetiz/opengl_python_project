@@ -23,7 +23,8 @@ class SettingsPresets:
             "bloom_intensity": 0.0,
             "render_distance": 500.0,
             "lod_bias": 2.0,
-            "culling_enabled": False
+            "culling_enabled": False,
+            "frustum_culling_enabled": True
         },
         
         "medium": {
@@ -38,7 +39,8 @@ class SettingsPresets:
             "bloom_intensity": 0.2,
             "render_distance": 750.0,
             "lod_bias": 1.5,
-            "culling_enabled": False
+            "culling_enabled": False,
+            "frustum_culling_enabled": True
         },
         
         "high": {
@@ -53,7 +55,8 @@ class SettingsPresets:
             "bloom_intensity": 0.3,
             "render_distance": 1000.0,
             "lod_bias": 1.0,
-            "culling_enabled": False
+            "culling_enabled": False,
+            "frustum_culling_enabled": True
         },
         
         "ultra": {
@@ -68,7 +71,8 @@ class SettingsPresets:
             "bloom_intensity": 0.4,
             "render_distance": 1500.0,
             "lod_bias": 0.5,
-            "culling_enabled": False  # Disabled - model has incorrect winding order
+            "culling_enabled": False,  # Disabled - model has incorrect winding order
+            "frustum_culling_enabled": True
         },
         
         "custom": {}  # User-defined preset

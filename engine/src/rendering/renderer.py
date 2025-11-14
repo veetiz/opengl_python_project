@@ -13,6 +13,7 @@ from ..scene.camera import Camera
 from ..scene.scene import Scene
 from ..graphics.mesh import Mesh
 from .shadow_map import ShadowMap
+from .frustum import Frustum, FrustumResult
 from ..systems.settings_manager import SettingsManager
 import os
 
@@ -60,6 +61,13 @@ class OpenGLRenderer:
         
         # Shadow maps
         self.shadow_maps: Dict[str, ShadowMap] = {}  # Maps light name to shadow map
+        
+        # Frustum culling
+        self.frustum = Frustum()
+        self.frustum_culling_enabled = True
+        self._culled_count = 0
+        self._total_count = 0
+        self._frame_count = 0
         
         # Graphics settings (applied from settings if available)
         self.shadows_enabled = True
@@ -818,12 +826,86 @@ class OpenGLRenderer:
             # Set up shadow mapping
             self._setup_shadow_mapping()
             
+            # Update frustum from camera (for culling)
+            view_projection = None
+            if active_camera and self.frustum_culling_enabled:
+                view_projection = projection @ view
+                # Use direct camera parameters method (more reliable than matrix extraction)
+                self.frustum.update_from_camera(
+                    active_camera.position,
+                    active_camera.front,
+                    active_camera.right,
+                    active_camera.up,
+                    active_camera.fov,
+                    active_camera.aspect_ratio,
+                    active_camera.near,
+                    active_camera.far
+                )
+            
+            # Reset culling stats
+            self._total_count = 0
+            self._culled_count = 0
+            
             # Bind VAO
             glBindVertexArray(self.vao)
             
             # Render all active game objects in the scene
             for game_object in self.scene.get_active_objects():
-                if game_object.model:
+                self._total_count += 1
+                
+                # Frustum culling test
+                should_render = True
+                if self.frustum_culling_enabled and active_camera and self.frustum.is_initialized():
+                    if game_object.model:
+                        # Get bounding box in world space
+                        model_matrix = game_object.get_model_matrix()
+                        world_bounds = game_object.model.get_bounding_box(model_matrix)
+                        
+                        # Test against frustum
+                        result = self.frustum.test_aabb(
+                            world_bounds.min_point,
+                            world_bounds.max_point
+                        )
+                        
+                        # Debug: Print frustum test details (first frame only)
+                        if not hasattr(self, '_frustum_test_debug'):
+                            center = (world_bounds.min_point + world_bounds.max_point) / 2.0
+                            print(f"[FrustumTest] Object center: {center}")
+                            print(f"[FrustumTest] Camera pos: {active_camera.position}")
+                            print(f"[FrustumTest] Camera front: {active_camera.front}")
+                            print(f"[FrustumTest] Bounds: min={world_bounds.min_point}, max={world_bounds.max_point}")
+                            print(f"[FrustumTest] Result: {result.name}")
+                            # Test center point directly
+                            center_result = self.frustum.test_point(center)
+                            print(f"[FrustumTest] Center point test: {center_result.name}")
+                            # Test a point in front of camera (should be INSIDE)
+                            in_front = active_camera.position + active_camera.front * -2.0  # 2 units in front
+                            in_front_result = self.frustum.test_point(in_front)
+                            print(f"[FrustumTest] Point in front of camera {in_front}: {in_front_result.name}")
+                            # Test a point behind camera
+                            behind_camera = active_camera.position - active_camera.front * 5.0
+                            behind_result = self.frustum.test_point(behind_camera)
+                            print(f"[FrustumTest] Point behind camera {behind_camera}: {behind_result.name}")
+                            # Print plane info
+                            if self.frustum.is_initialized():
+                                for i, plane in enumerate(self.frustum.planes):
+                                    if plane:
+                                        dist = plane.distance_to_point(center)
+                                        plane_names = ["LEFT", "RIGHT", "BOTTOM", "TOP", "NEAR", "FAR"]
+                                        print(f"[FrustumTest] {plane_names[i]} plane: normal={plane.normal}, dist={plane.distance}, point_dist={dist}")
+                            # Print view-projection matrix for debugging
+                            if view_projection is not None:
+                                print(f"[FrustumTest] View-projection matrix (first row): {view_projection[0, :]}")
+                                print(f"[FrustumTest] View-projection matrix (last row): {view_projection[3, :]}")
+                            self._frustum_test_debug = True
+                        
+                        # Skip rendering if outside frustum
+                        if result == FrustumResult.OUTSIDE:
+                            self._culled_count += 1
+                            should_render = False
+                
+                # Render the object if it passed the frustum test
+                if should_render and game_object.model:
                     # Set model matrix from game object transform
                     model_matrix = game_object.get_model_matrix()
                     glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model_matrix)
@@ -871,6 +953,15 @@ class OpenGLRenderer:
                             # Unbind texture
                             if hasattr(mesh, 'texture') and mesh.texture:
                                 mesh.texture.unbind()
+            
+            # Print culling stats (every 60 frames to avoid spam)
+            if self.frustum_culling_enabled and hasattr(self, '_frame_count'):
+                self._frame_count += 1
+                if self._frame_count % 60 == 0 and self._total_count > 0:
+                    visible_count = self._total_count - self._culled_count
+                    print(f"[FrustumCulling] {visible_count}/{self._total_count} visible")
+            elif self.frustum_culling_enabled:
+                self._frame_count = 0
             
             # NOTE: Don't swap buffers here - let Application do it after text rendering
             
@@ -937,7 +1028,14 @@ class OpenGLRenderer:
         self.render_distance = self.settings.get('graphics.render_distance', 1000.0)
         print(f"  [OK] Render distance: {self.render_distance}")
         
-        # === Culling ===
+        # === Frustum Culling ===
+        self.frustum_culling_enabled = self.settings.get('graphics.frustum_culling_enabled', True)
+        if self.frustum_culling_enabled:
+            print(f"  [OK] Frustum culling enabled")
+        else:
+            print(f"  [OK] Frustum culling disabled")
+        
+        # === Face Culling ===
         culling_enabled = self.settings.get('graphics.culling_enabled', True)
         if culling_enabled:
             glEnable(GL_CULL_FACE)
