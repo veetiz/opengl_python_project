@@ -27,7 +27,9 @@ class SettingsPresets:
             "frustum_culling_enabled": True,
             "octree_enabled": False,
             "octree_max_depth": 6,
-            "octree_max_objects_per_node": 10
+            "octree_max_objects_per_node": 10,
+            "instancing_enabled": False,
+            "instancing_max_instances_per_batch": 1000
         },
         
         "medium": {
@@ -46,7 +48,9 @@ class SettingsPresets:
             "frustum_culling_enabled": True,
             "octree_enabled": True,
             "octree_max_depth": 7,
-            "octree_max_objects_per_node": 10
+            "octree_max_objects_per_node": 10,
+            "instancing_enabled": True,
+            "instancing_max_instances_per_batch": 5000
         },
         
         "high": {
@@ -65,7 +69,9 @@ class SettingsPresets:
             "frustum_culling_enabled": True,
             "octree_enabled": True,
             "octree_max_depth": 8,
-            "octree_max_objects_per_node": 10
+            "octree_max_objects_per_node": 10,
+            "instancing_enabled": True,
+            "instancing_max_instances_per_batch": 10000
         },
         
         "ultra": {
@@ -84,7 +90,9 @@ class SettingsPresets:
             "frustum_culling_enabled": True,
             "octree_enabled": True,
             "octree_max_depth": 8,
-            "octree_max_objects_per_node": 8
+            "octree_max_objects_per_node": 8,
+            "instancing_enabled": True,
+            "instancing_max_instances_per_batch": 10000
         },
         
         "custom": {}  # User-defined preset

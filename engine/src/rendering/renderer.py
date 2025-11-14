@@ -14,6 +14,7 @@ from ..scene.scene import Scene
 from ..graphics.mesh import Mesh
 from .shadow_map import ShadowMap
 from .frustum import Frustum, FrustumResult
+from .instanced_renderer import InstancedRenderer
 from ..systems.settings_manager import SettingsManager
 import os
 
@@ -68,6 +69,11 @@ class OpenGLRenderer:
         self._culled_count = 0
         self._total_count = 0
         self._frame_count = 0
+        
+        # Instanced rendering
+        self.instanced_renderer = InstancedRenderer()
+        self.instancing_enabled = False
+        self.use_instancing_loc: Optional[int] = None
         
         # Graphics settings (applied from settings if available)
         self.shadows_enabled = True
@@ -136,6 +142,7 @@ class OpenGLRenderer:
             self.model_loc = glGetUniformLocation(self.shader_program, "model")
             self.view_loc = glGetUniformLocation(self.shader_program, "view")
             self.projection_loc = glGetUniformLocation(self.shader_program, "projection")
+            self.use_instancing_loc = glGetUniformLocation(self.shader_program, "useInstancing")
             self.texture_sampler_loc = glGetUniformLocation(self.shader_program, "textureSampler")
             self.use_texture_loc = glGetUniformLocation(self.shader_program, "useTexture")
             
@@ -888,56 +895,11 @@ class OpenGLRenderer:
                 objects_to_render = all_active_objects
                 self._culled_count = 0
             
-            # Render all game objects
-            for game_object in objects_to_render:
-                if game_object.model:
-                    # Set model matrix from game object transform
-                    model_matrix = game_object.get_model_matrix()
-                    glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model_matrix)
-                    
-                    # Set material properties (use object's material or default)
-                    self._set_material(game_object)
-                    
-                    # Draw all meshes in the model
-                    for mesh in game_object.model.meshes:
-                        if hasattr(mesh, 'vbo') and mesh.vbo:
-                            glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo)
-                            
-                            # Bind diffuse texture if available
-                            has_texture = hasattr(mesh, 'texture') and mesh.texture and mesh.texture.texture_id
-                            
-                            if has_texture:
-                                glActiveTexture(GL_TEXTURE0)
-                                mesh.texture.bind(0)
-                                glUniform1i(self.texture_sampler_loc, 0)
-                                glUniform1i(self.use_texture_loc, 1)
-                            else:
-                                glUniform1i(self.use_texture_loc, 0)
-                            
-                            # Bind normal map if available (from material)
-                            has_normal_map = (hasattr(game_object, 'material') and 
-                                            game_object.material and 
-                                            game_object.material.normal_map and 
-                                            game_object.material.normal_map.texture_id)
-                            
-                            if has_normal_map:
-                                glActiveTexture(GL_TEXTURE1)
-                                game_object.material.normal_map.bind(1)
-                                glUniform1i(self.normal_map_loc, 1)
-                                glUniform1i(self.use_normal_map_loc, 1)
-                            else:
-                                glUniform1i(self.use_normal_map_loc, 0)
-                            
-                            # Use indexed rendering if available
-                            if mesh.has_indices and hasattr(mesh, 'ebo') and mesh.ebo:
-                                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ebo)
-                                glDrawElements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, None)
-                            else:
-                                glDrawArrays(GL_TRIANGLES, 0, mesh.vertex_count)
-                            
-                            # Unbind texture
-                            if hasattr(mesh, 'texture') and mesh.texture:
-                                mesh.texture.unbind()
+            # Render objects (using instancing if enabled)
+            if self.instancing_enabled and len(objects_to_render) > 1:
+                self._render_instanced(objects_to_render)
+            else:
+                self._render_standard(objects_to_render)
             
             # Print culling stats (every 60 frames to avoid spam)
             if self.frustum_culling_enabled and hasattr(self, '_frame_count'):
@@ -948,7 +910,14 @@ class OpenGLRenderer:
                     if self.scene and self.scene.octree_enabled and self.scene.octree:
                         stats = self.scene.octree.get_statistics()
                         octree_info = f" | Octree: {stats['node_count']} nodes, {stats['leaf_count']} leaves"
-                    print(f"[FrustumCulling] {visible_count}/{self._total_count} visible{octree_info}")
+                    
+                    instancing_info = ""
+                    if self.instancing_enabled:
+                        inst_stats = self.instanced_renderer.get_statistics()
+                        if inst_stats['total_batches'] > 0:
+                            instancing_info = f" | Instancing: {inst_stats['total_instances']} instances in {inst_stats['total_batches']} batches"
+                    
+                    print(f"[FrustumCulling] {visible_count}/{self._total_count} visible{octree_info}{instancing_info}")
             elif self.frustum_culling_enabled:
                 self._frame_count = 0
             
@@ -1034,6 +1003,17 @@ class OpenGLRenderer:
         elif self.scene:
             self.scene.disable_octree()
             print(f"  [OK] Octree spatial partitioning disabled")
+        
+        # === Instanced Rendering ===
+        self.instancing_enabled = self.settings.get('graphics.instancing_enabled', False)
+        if self.instancing_enabled:
+            max_instances = self.settings.get('graphics.instancing_max_instances_per_batch', 10000)
+            self.instanced_renderer.max_instances_per_batch = max_instances
+            self.instanced_renderer.enabled = True
+            print(f"  [OK] Instanced rendering enabled (max instances/batch: {max_instances})")
+        else:
+            self.instanced_renderer.enabled = False
+            print(f"  [OK] Instanced rendering disabled")
         
         # === Face Culling ===
         culling_enabled = self.settings.get('graphics.culling_enabled', True)
@@ -1135,9 +1115,174 @@ class OpenGLRenderer:
             
             print(f"[Renderer] Shadow maps recreated at {shadow_size}x{shadow_size}")
     
+    def _render_standard(self, objects_to_render: List):
+        """Render objects using standard per-object draw calls."""
+        if self.use_instancing_loc is not None:
+            glUniform1i(self.use_instancing_loc, 0)  # Disable instancing
+        
+        for game_object in objects_to_render:
+            if game_object.model:
+                # Set model matrix from game object transform
+                model_matrix = game_object.get_model_matrix()
+                glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model_matrix)
+                
+                # Set material properties (use object's material or default)
+                self._set_material(game_object)
+                
+                # Draw all meshes in the model
+                for mesh in game_object.model.meshes:
+                    if hasattr(mesh, 'vbo') and mesh.vbo:
+                        glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo)
+                        
+                        # Bind diffuse texture if available
+                        has_texture = hasattr(mesh, 'texture') and mesh.texture and mesh.texture.texture_id
+                        
+                        if has_texture:
+                            glActiveTexture(GL_TEXTURE0)
+                            mesh.texture.bind(0)
+                            glUniform1i(self.texture_sampler_loc, 0)
+                            glUniform1i(self.use_texture_loc, 1)
+                        else:
+                            glUniform1i(self.use_texture_loc, 0)
+                        
+                        # Bind normal map if available (from material)
+                        has_normal_map = (hasattr(game_object, 'material') and 
+                                        game_object.material and 
+                                        game_object.material.normal_map and 
+                                        game_object.material.normal_map.texture_id)
+                        
+                        if has_normal_map:
+                            glActiveTexture(GL_TEXTURE1)
+                            game_object.material.normal_map.bind(1)
+                            glUniform1i(self.normal_map_loc, 1)
+                            glUniform1i(self.use_normal_map_loc, 1)
+                        else:
+                            glUniform1i(self.use_normal_map_loc, 0)
+                        
+                        # Use indexed rendering if available
+                        if mesh.has_indices and hasattr(mesh, 'ebo') and mesh.ebo:
+                            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ebo)
+                            glDrawElements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, None)
+                        else:
+                            glDrawArrays(GL_TRIANGLES, 0, mesh.vertex_count)
+                        
+                        # Unbind texture
+                        if hasattr(mesh, 'texture') and mesh.texture:
+                            mesh.texture.unbind()
+    
+    def _render_instanced(self, objects_to_render: List):
+        """Render objects using instanced rendering."""
+        if self.use_instancing_loc is None:
+            # Fallback to standard rendering if instancing not available
+            self._render_standard(objects_to_render)
+            return
+        
+        # Prepare instance batches
+        self.instanced_renderer.prepare_batches(objects_to_render)
+        self.instanced_renderer.update_instance_data()
+        
+        # Enable instancing
+        glUniform1i(self.use_instancing_loc, 1)
+        
+        # Render each batch
+        batches = self.instanced_renderer.get_batches()
+        
+        for mesh_id, batch in batches.items():
+            if len(batch.instances) == 0:
+                continue
+            
+            # Find the mesh for this batch
+            first_obj = batch.instances[0]
+            if not first_obj.model:
+                continue
+            
+            # Find matching mesh
+            target_mesh = None
+            for mesh in first_obj.model.meshes:
+                if self.instanced_renderer.get_mesh_id(mesh) == mesh_id:
+                    target_mesh = mesh
+                    break
+            
+            if not target_mesh or not hasattr(target_mesh, 'vbo') or not target_mesh.vbo:
+                continue
+            
+            # Bind mesh vertex buffer
+            glBindBuffer(GL_ARRAY_BUFFER, target_mesh.vbo)
+            
+            # Set up vertex attributes (standard attributes)
+            # Position, Color, TexCoord, Normal, Tangent, Bitangent are already set up
+            # We need to set up instance matrix attributes (locations 6-9)
+            
+            # Bind instance data buffer
+            if batch.instance_vbo is not None:
+                glBindBuffer(GL_ARRAY_BUFFER, batch.instance_vbo)
+                
+                # Set up instance matrix attributes (mat4 = 4 vec4s)
+                # Each vec4 takes one location, so we use locations 6-9
+                stride = 16 * 4  # 16 floats (4 vec4s) * 4 bytes per float = 64 bytes
+                
+                for i in range(4):
+                    location = 6 + i
+                    glEnableVertexAttribArray(location)
+                    # Each vec4 is 4 floats = 16 bytes, offset by i * 16 bytes
+                    glVertexAttribPointer(location, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(i * 16))
+                    glVertexAttribDivisor(location, 1)  # Advance once per instance
+                
+                # Rebind mesh vertex buffer for drawing
+                glBindBuffer(GL_ARRAY_BUFFER, target_mesh.vbo)
+            
+            # Set material (use first instance's material as representative)
+            # Note: In a more advanced system, we'd batch by material too
+            self._set_material(first_obj)
+            
+            # Bind textures (from first instance)
+            has_texture = hasattr(target_mesh, 'texture') and target_mesh.texture and target_mesh.texture.texture_id
+            if has_texture:
+                glActiveTexture(GL_TEXTURE0)
+                target_mesh.texture.bind(0)
+                glUniform1i(self.texture_sampler_loc, 0)
+                glUniform1i(self.use_texture_loc, 1)
+            else:
+                glUniform1i(self.use_texture_loc, 0)
+            
+            has_normal_map = (hasattr(first_obj, 'material') and 
+                            first_obj.material and 
+                            first_obj.material.normal_map and 
+                            first_obj.material.normal_map.texture_id)
+            if has_normal_map:
+                glActiveTexture(GL_TEXTURE1)
+                first_obj.material.normal_map.bind(1)
+                glUniform1i(self.normal_map_loc, 1)
+                glUniform1i(self.use_normal_map_loc, 1)
+            else:
+                glUniform1i(self.use_normal_map_loc, 0)
+            
+            # Draw instanced
+            instance_count = len(batch.instances)
+            if target_mesh.has_indices and hasattr(target_mesh, 'ebo') and target_mesh.ebo:
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, target_mesh.ebo)
+                glDrawElementsInstanced(GL_TRIANGLES, target_mesh.index_count, GL_UNSIGNED_INT, None, instance_count)
+            else:
+                glDrawArraysInstanced(GL_TRIANGLES, 0, target_mesh.vertex_count, instance_count)
+            
+            # Disable instance attributes
+            for i in range(4):
+                glDisableVertexAttribArray(6 + i)
+                glVertexAttribDivisor(6 + i, 0)  # Reset divisor
+            
+            # Unbind texture
+            if hasattr(target_mesh, 'texture') and target_mesh.texture:
+                target_mesh.texture.unbind()
+        
+        # Disable instancing
+        glUniform1i(self.use_instancing_loc, 0)
+    
     def cleanup(self):
         """Clean up OpenGL resources."""
         print("\nCleaning up OpenGL resources...")
+        
+        # Clean up instanced renderer
+        self.instanced_renderer.cleanup()
         
         # Clean up shadow maps
         for shadow_map in self.shadow_maps.values():
