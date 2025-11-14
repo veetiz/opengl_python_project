@@ -867,38 +867,6 @@ class OpenGLRenderer:
                             world_bounds.max_point
                         )
                         
-                        # Debug: Print frustum test details (first frame only)
-                        if not hasattr(self, '_frustum_test_debug'):
-                            center = (world_bounds.min_point + world_bounds.max_point) / 2.0
-                            print(f"[FrustumTest] Object center: {center}")
-                            print(f"[FrustumTest] Camera pos: {active_camera.position}")
-                            print(f"[FrustumTest] Camera front: {active_camera.front}")
-                            print(f"[FrustumTest] Bounds: min={world_bounds.min_point}, max={world_bounds.max_point}")
-                            print(f"[FrustumTest] Result: {result.name}")
-                            # Test center point directly
-                            center_result = self.frustum.test_point(center)
-                            print(f"[FrustumTest] Center point test: {center_result.name}")
-                            # Test a point in front of camera (should be INSIDE)
-                            in_front = active_camera.position + active_camera.front * -2.0  # 2 units in front
-                            in_front_result = self.frustum.test_point(in_front)
-                            print(f"[FrustumTest] Point in front of camera {in_front}: {in_front_result.name}")
-                            # Test a point behind camera
-                            behind_camera = active_camera.position - active_camera.front * 5.0
-                            behind_result = self.frustum.test_point(behind_camera)
-                            print(f"[FrustumTest] Point behind camera {behind_camera}: {behind_result.name}")
-                            # Print plane info
-                            if self.frustum.is_initialized():
-                                for i, plane in enumerate(self.frustum.planes):
-                                    if plane:
-                                        dist = plane.distance_to_point(center)
-                                        plane_names = ["LEFT", "RIGHT", "BOTTOM", "TOP", "NEAR", "FAR"]
-                                        print(f"[FrustumTest] {plane_names[i]} plane: normal={plane.normal}, dist={plane.distance}, point_dist={dist}")
-                            # Print view-projection matrix for debugging
-                            if view_projection is not None:
-                                print(f"[FrustumTest] View-projection matrix (first row): {view_projection[0, :]}")
-                                print(f"[FrustumTest] View-projection matrix (last row): {view_projection[3, :]}")
-                            self._frustum_test_debug = True
-                        
                         # Skip rendering if outside frustum
                         if result == FrustumResult.OUTSIDE:
                             self._culled_count += 1
