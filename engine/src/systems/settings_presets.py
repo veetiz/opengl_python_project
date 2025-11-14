@@ -29,7 +29,9 @@ class SettingsPresets:
             "octree_max_depth": 6,
             "octree_max_objects_per_node": 10,
             "instancing_enabled": False,
-            "instancing_max_instances_per_batch": 1000
+            "instancing_max_instances_per_batch": 1000,
+            "lod_enabled": False,
+            "lod_bias": 0.0
         },
         
         "medium": {
@@ -50,7 +52,9 @@ class SettingsPresets:
             "octree_max_depth": 7,
             "octree_max_objects_per_node": 10,
             "instancing_enabled": True,
-            "instancing_max_instances_per_batch": 5000
+            "instancing_max_instances_per_batch": 5000,
+            "lod_enabled": True,
+            "lod_bias": 0.0
         },
         
         "high": {
@@ -71,7 +75,9 @@ class SettingsPresets:
             "octree_max_depth": 8,
             "octree_max_objects_per_node": 10,
             "instancing_enabled": True,
-            "instancing_max_instances_per_batch": 10000
+            "instancing_max_instances_per_batch": 10000,
+            "lod_enabled": True,
+            "lod_bias": 0.0
         },
         
         "ultra": {
@@ -92,7 +98,9 @@ class SettingsPresets:
             "octree_max_depth": 8,
             "octree_max_objects_per_node": 8,
             "instancing_enabled": True,
-            "instancing_max_instances_per_batch": 10000
+            "instancing_max_instances_per_batch": 10000,
+            "lod_enabled": True,
+            "lod_bias": 0.0
         },
         
         "custom": {}  # User-defined preset

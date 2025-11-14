@@ -15,6 +15,7 @@ from ..graphics.mesh import Mesh
 from .shadow_map import ShadowMap
 from .frustum import Frustum, FrustumResult
 from .instanced_renderer import InstancedRenderer
+from .lod_system import LODSystem, LODLevel
 from ..systems.settings_manager import SettingsManager
 import os
 
@@ -74,6 +75,10 @@ class OpenGLRenderer:
         self.instanced_renderer = InstancedRenderer()
         self.instancing_enabled = False
         self.use_instancing_loc: Optional[int] = None
+        
+        # LOD system
+        self.lod_system = LODSystem()
+        self.lod_enabled = False
         
         # Graphics settings (applied from settings if available)
         self.shadows_enabled = True
@@ -895,11 +900,15 @@ class OpenGLRenderer:
                 objects_to_render = all_active_objects
                 self._culled_count = 0
             
+            # Reset LOD statistics
+            if self.lod_enabled:
+                self.lod_system.reset_statistics()
+            
             # Render objects (using instancing if enabled)
             if self.instancing_enabled and len(objects_to_render) > 1:
-                self._render_instanced(objects_to_render)
+                self._render_instanced(objects_to_render, active_camera)
             else:
-                self._render_standard(objects_to_render)
+                self._render_standard(objects_to_render, active_camera)
             
             # Print culling stats (every 60 frames to avoid spam)
             if self.frustum_culling_enabled and hasattr(self, '_frame_count'):
@@ -917,7 +926,15 @@ class OpenGLRenderer:
                         if inst_stats['total_batches'] > 0:
                             instancing_info = f" | Instancing: {inst_stats['total_instances']} instances in {inst_stats['total_batches']} batches"
                     
-                    print(f"[FrustumCulling] {visible_count}/{self._total_count} visible{octree_info}{instancing_info}")
+                    lod_info = ""
+                    if self.lod_enabled:
+                        lod_stats = self.lod_system.get_statistics()
+                        if lod_stats['total_objects'] > 0:
+                            lod_usage_str = ", ".join([f"LOD{i}:{count}" for i, count in sorted(lod_stats['lod_usage'].items()) if i >= 0])
+                            if lod_usage_str:
+                                lod_info = f" | LOD: {lod_usage_str}"
+                    
+                    print(f"[FrustumCulling] {visible_count}/{self._total_count} visible{octree_info}{instancing_info}{lod_info}")
             elif self.frustum_culling_enabled:
                 self._frame_count = 0
             
@@ -1014,6 +1031,19 @@ class OpenGLRenderer:
         else:
             self.instanced_renderer.enabled = False
             print(f"  [OK] Instanced rendering disabled")
+        
+        # === Level of Detail (LOD) ===
+        self.lod_enabled = self.settings.get('graphics.lod_enabled', False)
+        if self.lod_enabled:
+            lod_bias = self.settings.get('graphics.lod_bias', 0.0)
+            max_distance = self.settings.get('graphics.render_distance', 1000.0)
+            self.lod_system.set_lod_bias(lod_bias)
+            self.lod_system.set_max_render_distance(max_distance)
+            self.lod_system.enabled = True
+            print(f"  [OK] LOD system enabled (bias: {lod_bias}, max distance: {max_distance})")
+        else:
+            self.lod_system.enabled = False
+            print(f"  [OK] LOD system disabled")
         
         # === Face Culling ===
         culling_enabled = self.settings.get('graphics.culling_enabled', True)
@@ -1115,13 +1145,40 @@ class OpenGLRenderer:
             
             print(f"[Renderer] Shadow maps recreated at {shadow_size}x{shadow_size}")
     
-    def _render_standard(self, objects_to_render: List):
+    def _render_standard(self, objects_to_render: List, camera: Optional[Camera] = None):
         """Render objects using standard per-object draw calls."""
         if self.use_instancing_loc is not None:
             glUniform1i(self.use_instancing_loc, 0)  # Disable instancing
         
+        camera_position = None
+        if camera:
+            camera_position = camera.position
+        
         for game_object in objects_to_render:
             if game_object.model:
+                # Get LOD level if enabled
+                render_model = game_object.model
+                lod_level = LODLevel.LOD0
+                
+                if self.lod_enabled and camera_position is not None:
+                    object_position = game_object.transform.position
+                    lod_level = self.lod_system.get_lod_level(
+                        game_object.model,
+                        camera_position,
+                        object_position
+                    )
+                    
+                    if lod_level == LODLevel.CULLED:
+                        continue  # Skip culled objects
+                    
+                    # Get model for this LOD level
+                    lod_model = self.lod_system.get_model_for_lod(game_object.model, lod_level)
+                    if lod_model:
+                        render_model = lod_model
+                    
+                    # Record LOD usage
+                    self.lod_system.record_lod_usage(lod_level)
+                
                 # Set model matrix from game object transform
                 model_matrix = game_object.get_model_matrix()
                 glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model_matrix)
@@ -1129,8 +1186,8 @@ class OpenGLRenderer:
                 # Set material properties (use object's material or default)
                 self._set_material(game_object)
                 
-                # Draw all meshes in the model
-                for mesh in game_object.model.meshes:
+                # Draw all meshes in the model (using LOD model if applicable)
+                for mesh in render_model.meshes:
                     if hasattr(mesh, 'vbo') and mesh.vbo:
                         glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo)
                         
@@ -1170,76 +1227,107 @@ class OpenGLRenderer:
                         if hasattr(mesh, 'texture') and mesh.texture:
                             mesh.texture.unbind()
     
-    def _render_instanced(self, objects_to_render: List):
-        """Render objects using instanced rendering."""
+    def _render_instanced(self, objects_to_render: List, camera: Optional[Camera] = None):
+        """Render objects using instanced rendering with LOD support."""
         if self.use_instancing_loc is None:
             # Fallback to standard rendering if instancing not available
-            self._render_standard(objects_to_render)
+            self._render_standard(objects_to_render, camera)
             return
         
-        # Prepare instance batches
-        self.instanced_renderer.prepare_batches(objects_to_render)
-        self.instanced_renderer.update_instance_data()
+        camera_position = None
+        if camera:
+            camera_position = camera.position
+        
+        # Group objects by (mesh_id, lod_level) for instancing
+        # This allows us to instance objects with the same mesh and LOD level
+        from collections import defaultdict
+        lod_groups: Dict[tuple, List] = defaultdict(list)  # (mesh_id, lod_level) -> [(obj, model, mesh)]
+        
+        for game_object in objects_to_render:
+            if not game_object.model:
+                continue
+            
+            # Get LOD level if enabled
+            lod_level = LODLevel.LOD0
+            render_model = game_object.model
+            
+            if self.lod_enabled and camera_position is not None:
+                object_position = game_object.transform.position
+                lod_level = self.lod_system.get_lod_level(
+                    game_object.model,
+                    camera_position,
+                    object_position
+                )
+                
+                if lod_level == LODLevel.CULLED:
+                    continue  # Skip culled objects
+                
+                # Get model for this LOD level
+                lod_model = self.lod_system.get_model_for_lod(game_object.model, lod_level)
+                if lod_model:
+                    render_model = lod_model
+                
+                # Record LOD usage
+                self.lod_system.record_lod_usage(lod_level)
+            
+            # Group by mesh and LOD level
+            for mesh in render_model.meshes:
+                mesh_id = self.instanced_renderer.get_mesh_id(mesh)
+                key = (mesh_id, lod_level)
+                lod_groups[key].append((game_object, render_model, mesh))
         
         # Enable instancing
         glUniform1i(self.use_instancing_loc, 1)
         
-        # Render each batch
-        batches = self.instanced_renderer.get_batches()
-        
-        for mesh_id, batch in batches.items():
-            if len(batch.instances) == 0:
+        # Render each LOD group separately
+        for (mesh_id, lod_level), group in lod_groups.items():
+            if len(group) == 0:
                 continue
             
-            # Find the mesh for this batch
-            first_obj = batch.instances[0]
-            if not first_obj.model:
-                continue
+            # Extract objects for this group
+            objects_for_batch = [obj for obj, _, _ in group]
+            first_obj, first_model, first_mesh = group[0]
             
-            # Find matching mesh
-            target_mesh = None
-            for mesh in first_obj.model.meshes:
-                if self.instanced_renderer.get_mesh_id(mesh) == mesh_id:
-                    target_mesh = mesh
-                    break
+            # Create or get batch for this mesh_id
+            if mesh_id not in self.instanced_renderer.batches:
+                from .instanced_renderer import InstanceBatch
+                self.instanced_renderer.batches[mesh_id] = InstanceBatch(mesh_id)
             
-            if not target_mesh or not hasattr(target_mesh, 'vbo') or not target_mesh.vbo:
+            batch = self.instanced_renderer.batches[mesh_id]
+            batch.instances = objects_for_batch
+            batch.dirty = True
+            batch.update_instance_data()
+            batch.upload_to_gpu()
+            
+            # Render the batch
+            if not first_mesh or not hasattr(first_mesh, 'vbo') or not first_mesh.vbo:
                 continue
             
             # Bind mesh vertex buffer
-            glBindBuffer(GL_ARRAY_BUFFER, target_mesh.vbo)
+            glBindBuffer(GL_ARRAY_BUFFER, first_mesh.vbo)
             
-            # Set up vertex attributes (standard attributes)
-            # Position, Color, TexCoord, Normal, Tangent, Bitangent are already set up
-            # We need to set up instance matrix attributes (locations 6-9)
-            
-            # Bind instance data buffer
+            # Set up instance matrix attributes
             if batch.instance_vbo is not None:
                 glBindBuffer(GL_ARRAY_BUFFER, batch.instance_vbo)
                 
-                # Set up instance matrix attributes (mat4 = 4 vec4s)
-                # Each vec4 takes one location, so we use locations 6-9
-                stride = 16 * 4  # 16 floats (4 vec4s) * 4 bytes per float = 64 bytes
+                stride = 16 * 4  # 16 floats * 4 bytes per float = 64 bytes
                 
                 for i in range(4):
                     location = 6 + i
                     glEnableVertexAttribArray(location)
-                    # Each vec4 is 4 floats = 16 bytes, offset by i * 16 bytes
                     glVertexAttribPointer(location, 4, GL_FLOAT, GL_FALSE, stride, ctypes.c_void_p(i * 16))
-                    glVertexAttribDivisor(location, 1)  # Advance once per instance
+                    glVertexAttribDivisor(location, 1)
                 
-                # Rebind mesh vertex buffer for drawing
-                glBindBuffer(GL_ARRAY_BUFFER, target_mesh.vbo)
+                glBindBuffer(GL_ARRAY_BUFFER, first_mesh.vbo)
             
-            # Set material (use first instance's material as representative)
-            # Note: In a more advanced system, we'd batch by material too
+            # Set material
             self._set_material(first_obj)
             
-            # Bind textures (from first instance)
-            has_texture = hasattr(target_mesh, 'texture') and target_mesh.texture and target_mesh.texture.texture_id
+            # Bind textures
+            has_texture = hasattr(first_mesh, 'texture') and first_mesh.texture and first_mesh.texture.texture_id
             if has_texture:
                 glActiveTexture(GL_TEXTURE0)
-                target_mesh.texture.bind(0)
+                first_mesh.texture.bind(0)
                 glUniform1i(self.texture_sampler_loc, 0)
                 glUniform1i(self.use_texture_loc, 1)
             else:
@@ -1258,21 +1346,20 @@ class OpenGLRenderer:
                 glUniform1i(self.use_normal_map_loc, 0)
             
             # Draw instanced
-            instance_count = len(batch.instances)
-            if target_mesh.has_indices and hasattr(target_mesh, 'ebo') and target_mesh.ebo:
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, target_mesh.ebo)
-                glDrawElementsInstanced(GL_TRIANGLES, target_mesh.index_count, GL_UNSIGNED_INT, None, instance_count)
+            instance_count = len(objects_for_batch)
+            if first_mesh.has_indices and hasattr(first_mesh, 'ebo') and first_mesh.ebo:
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, first_mesh.ebo)
+                glDrawElementsInstanced(GL_TRIANGLES, first_mesh.index_count, GL_UNSIGNED_INT, None, instance_count)
             else:
-                glDrawArraysInstanced(GL_TRIANGLES, 0, target_mesh.vertex_count, instance_count)
+                glDrawArraysInstanced(GL_TRIANGLES, 0, first_mesh.vertex_count, instance_count)
             
             # Disable instance attributes
             for i in range(4):
                 glDisableVertexAttribArray(6 + i)
-                glVertexAttribDivisor(6 + i, 0)  # Reset divisor
+                glVertexAttribDivisor(6 + i, 0)
             
-            # Unbind texture
-            if hasattr(target_mesh, 'texture') and target_mesh.texture:
-                target_mesh.texture.unbind()
+            if hasattr(first_mesh, 'texture') and first_mesh.texture:
+                first_mesh.texture.unbind()
         
         # Disable instancing
         glUniform1i(self.use_instancing_loc, 0)
