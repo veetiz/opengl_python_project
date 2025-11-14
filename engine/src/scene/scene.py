@@ -4,6 +4,7 @@ Manages game objects, cameras, and scene hierarchy.
 """
 
 from typing import List, Optional, TYPE_CHECKING
+import numpy as np
 
 if TYPE_CHECKING:
     from .gameobject import GameObject
@@ -11,6 +12,8 @@ if TYPE_CHECKING:
     from .entity import Entity
     from .gamescript import GameScript
     from ..graphics.light import Light
+    from ..spatial.octree import Octree
+    from ..rendering.frustum import Frustum
 
 
 class Scene:
@@ -34,6 +37,11 @@ class Scene:
         self._entities: List['Entity'] = []  # All entities (unified list)
         self.scripts: List['GameScript'] = []  # Global scripts attached to the scene
         self._scripts_started = False
+        
+        # Spatial partitioning
+        self.octree: Optional['Octree'] = None
+        self.octree_enabled = False
+        self.octree_auto_rebuild = True  # Rebuild octree when objects added/removed
     
     def add_game_object(self, game_object: 'GameObject'):
         """
@@ -44,6 +52,10 @@ class Scene:
         """
         self.game_objects.append(game_object)
         self._entities.append(game_object)
+        
+        # Add to octree if enabled
+        if self.octree_enabled and self.octree:
+            self.octree.insert(game_object)
     
     def remove_game_object(self, game_object: 'GameObject'):
         """
@@ -56,6 +68,10 @@ class Scene:
             self.game_objects.remove(game_object)
         if game_object in self._entities:
             self._entities.remove(game_object)
+        
+        # Remove from octree if enabled
+        if self.octree_enabled and self.octree:
+            self.octree.remove(game_object)
     
     def get_active_objects(self) -> List['GameObject']:
         """
@@ -84,6 +100,8 @@ class Scene:
     def clear(self):
         """Remove all game objects from the scene."""
         self.game_objects.clear()
+        if self.octree:
+            self.octree.clear()
     
     @property
     def object_count(self) -> int:
@@ -403,4 +421,109 @@ class Scene:
         for entity in self._entities:
             if entity.active:
                 entity.update_scripts(delta_time)
+    
+    # === Spatial Partitioning (Octree) ===
+    
+    def _calculate_scene_bounds(self) -> tuple[np.ndarray, float]:
+        """
+        Calculate the bounding box of all objects in the scene.
+        
+        Returns:
+            Tuple of (center, size) for the scene bounds
+        """
+        if not self.game_objects:
+            # Default bounds if no objects
+            return np.array([0.0, 0.0, 0.0], dtype=np.float32), 100.0
+        
+        min_point = None
+        max_point = None
+        
+        for obj in self.game_objects:
+            if not obj.active or not obj.model:
+                continue
+            
+            model_matrix = obj.get_model_matrix()
+            bounds = obj.model.get_bounding_box(model_matrix)
+            
+            if min_point is None:
+                min_point = bounds.min_point.copy()
+                max_point = bounds.max_point.copy()
+            else:
+                min_point = np.minimum(min_point, bounds.min_point)
+                max_point = np.maximum(max_point, bounds.max_point)
+        
+        if min_point is None:
+            # No valid objects
+            return np.array([0.0, 0.0, 0.0], dtype=np.float32), 100.0
+        
+        center = (min_point + max_point) * 0.5
+        size = np.max(max_point - min_point) * 1.2  # Add 20% padding
+        
+        # Ensure minimum size
+        if size < 10.0:
+            size = 100.0
+        
+        return center, size
+    
+    def enable_octree(
+        self,
+        max_depth: int = 8,
+        max_objects_per_node: int = 10,
+        center: Optional[np.ndarray] = None,
+        size: Optional[float] = None
+    ):
+        """
+        Enable and initialize the octree for spatial partitioning.
+        
+        Args:
+            max_depth: Maximum depth of the octree (default: 8)
+            max_objects_per_node: Maximum objects per node before subdividing (default: 10)
+            center: Center point of the octree (auto-calculated if None)
+            size: Size of the octree root node (auto-calculated if None)
+        """
+        from ..spatial.octree import Octree
+        
+        if center is None or size is None:
+            center, size = self._calculate_scene_bounds()
+        
+        self.octree = Octree(center, size, max_depth, max_objects_per_node)
+        self.octree_enabled = True
+        
+        # Rebuild with all current objects
+        self.rebuild_octree()
+    
+    def disable_octree(self):
+        """Disable the octree spatial partitioning."""
+        self.octree_enabled = False
+        if self.octree:
+            self.octree.clear()
+            self.octree = None
+    
+    def rebuild_octree(self):
+        """Rebuild the octree with all current game objects."""
+        if not self.octree_enabled or not self.octree:
+            return
+        
+        active_objects = [obj for obj in self.game_objects if obj.active and obj.model]
+        self.octree.rebuild(active_objects)
+    
+    def get_objects_in_frustum(self, frustum: 'Frustum') -> List['GameObject']:
+        """
+        Get all active game objects that intersect with the frustum.
+        Uses octree if enabled and beneficial, otherwise falls back to linear search.
+        
+        Args:
+            frustum: Frustum to test against
+            
+        Returns:
+            List of GameObjects that intersect the frustum
+        """
+        # Use octree if enabled, initialized, and we have enough objects to benefit
+        if (self.octree_enabled and self.octree and frustum.is_initialized() and 
+            len(self.game_objects) > 10):  # Only use octree if we have enough objects
+            # Use octree for efficient query (octree already filters for active objects)
+            return self.octree.query_frustum(frustum)
+        else:
+            # Fall back to linear search (original behavior)
+            return self.get_active_objects()
 

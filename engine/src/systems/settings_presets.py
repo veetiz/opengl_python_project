@@ -24,7 +24,10 @@ class SettingsPresets:
             "render_distance": 500.0,
             "lod_bias": 2.0,
             "culling_enabled": False,
-            "frustum_culling_enabled": True
+            "frustum_culling_enabled": True,
+            "octree_enabled": False,
+            "octree_max_depth": 6,
+            "octree_max_objects_per_node": 10
         },
         
         "medium": {
@@ -40,7 +43,10 @@ class SettingsPresets:
             "render_distance": 750.0,
             "lod_bias": 1.5,
             "culling_enabled": False,
-            "frustum_culling_enabled": True
+            "frustum_culling_enabled": True,
+            "octree_enabled": True,
+            "octree_max_depth": 7,
+            "octree_max_objects_per_node": 10
         },
         
         "high": {
@@ -56,7 +62,10 @@ class SettingsPresets:
             "render_distance": 1000.0,
             "lod_bias": 1.0,
             "culling_enabled": False,
-            "frustum_culling_enabled": True
+            "frustum_culling_enabled": True,
+            "octree_enabled": True,
+            "octree_max_depth": 8,
+            "octree_max_objects_per_node": 10
         },
         
         "ultra": {
@@ -72,7 +81,10 @@ class SettingsPresets:
             "render_distance": 1500.0,
             "lod_bias": 0.5,
             "culling_enabled": False,  # Disabled - model has incorrect winding order
-            "frustum_culling_enabled": True
+            "frustum_culling_enabled": True,
+            "octree_enabled": True,
+            "octree_max_depth": 8,
+            "octree_max_objects_per_node": 8
         },
         
         "custom": {}  # User-defined preset

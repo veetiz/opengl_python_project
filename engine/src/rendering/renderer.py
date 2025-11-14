@@ -366,6 +366,14 @@ class OpenGLRenderer:
         """
         self.scene = scene
         
+        # Initialize octree if enabled in settings
+        if self.settings:
+            octree_enabled = self.settings.get('graphics.octree_enabled', False)
+            if octree_enabled:
+                max_depth = self.settings.get('graphics.octree_max_depth', 8)
+                max_objects = self.settings.get('graphics.octree_max_objects_per_node', 10)
+                scene.enable_octree(max_depth=max_depth, max_objects_per_node=max_objects)
+        
         # Create VBOs for all meshes in the scene
         for game_object in scene.game_objects:
             if game_object.model:
@@ -849,31 +857,40 @@ class OpenGLRenderer:
             # Bind VAO
             glBindVertexArray(self.vao)
             
-            # Render all active game objects in the scene
-            for game_object in self.scene.get_active_objects():
-                self._total_count += 1
-                
-                # Frustum culling test
-                should_render = True
-                if self.frustum_culling_enabled and active_camera and self.frustum.is_initialized():
-                    if game_object.model:
-                        # Get bounding box in world space
-                        model_matrix = game_object.get_model_matrix()
-                        world_bounds = game_object.model.get_bounding_box(model_matrix)
-                        
-                        # Test against frustum
-                        result = self.frustum.test_aabb(
-                            world_bounds.min_point,
-                            world_bounds.max_point
-                        )
-                        
-                        # Skip rendering if outside frustum
-                        if result == FrustumResult.OUTSIDE:
-                            self._culled_count += 1
-                            should_render = False
-                
-                # Render the object if it passed the frustum test
-                if should_render and game_object.model:
+            # Get objects to render (using octree if enabled, otherwise all active objects)
+            all_active_objects = self.scene.get_active_objects()
+            self._total_count = len(all_active_objects)
+            
+            if self.frustum_culling_enabled and active_camera and self.frustum.is_initialized():
+                # Use octree for efficient frustum culling (octree already does the culling)
+                if self.scene.octree_enabled:
+                    objects_to_render = self.scene.get_objects_in_frustum(self.frustum)
+                    self._culled_count = self._total_count - len(objects_to_render)
+                else:
+                    # No octree, do per-object frustum culling
+                    objects_to_render = []
+                    for game_object in all_active_objects:
+                        if game_object.model:
+                            model_matrix = game_object.get_model_matrix()
+                            world_bounds = game_object.model.get_bounding_box(model_matrix)
+                            result = self.frustum.test_aabb(
+                                world_bounds.min_point,
+                                world_bounds.max_point
+                            )
+                            if result != FrustumResult.OUTSIDE:
+                                objects_to_render.append(game_object)
+                            else:
+                                self._culled_count += 1
+                        else:
+                            objects_to_render.append(game_object)
+            else:
+                # No frustum culling, render all active objects
+                objects_to_render = all_active_objects
+                self._culled_count = 0
+            
+            # Render all game objects
+            for game_object in objects_to_render:
+                if game_object.model:
                     # Set model matrix from game object transform
                     model_matrix = game_object.get_model_matrix()
                     glUniformMatrix4fv(self.model_loc, 1, GL_FALSE, model_matrix)
@@ -927,7 +944,11 @@ class OpenGLRenderer:
                 self._frame_count += 1
                 if self._frame_count % 60 == 0 and self._total_count > 0:
                     visible_count = self._total_count - self._culled_count
-                    print(f"[FrustumCulling] {visible_count}/{self._total_count} visible")
+                    octree_info = ""
+                    if self.scene and self.scene.octree_enabled and self.scene.octree:
+                        stats = self.scene.octree.get_statistics()
+                        octree_info = f" | Octree: {stats['node_count']} nodes, {stats['leaf_count']} leaves"
+                    print(f"[FrustumCulling] {visible_count}/{self._total_count} visible{octree_info}")
             elif self.frustum_culling_enabled:
                 self._frame_count = 0
             
@@ -1002,6 +1023,17 @@ class OpenGLRenderer:
             print(f"  [OK] Frustum culling enabled")
         else:
             print(f"  [OK] Frustum culling disabled")
+        
+        # === Octree Spatial Partitioning ===
+        octree_enabled = self.settings.get('graphics.octree_enabled', False)
+        if octree_enabled and self.scene:
+            max_depth = self.settings.get('graphics.octree_max_depth', 8)
+            max_objects = self.settings.get('graphics.octree_max_objects_per_node', 10)
+            self.scene.enable_octree(max_depth=max_depth, max_objects_per_node=max_objects)
+            print(f"  [OK] Octree spatial partitioning enabled (depth: {max_depth}, max objects/node: {max_objects})")
+        elif self.scene:
+            self.scene.disable_octree()
+            print(f"  [OK] Octree spatial partitioning disabled")
         
         # === Face Culling ===
         culling_enabled = self.settings.get('graphics.culling_enabled', True)
